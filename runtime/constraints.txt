@@ -1,0 +1,6 @@
+# Constraints to avoid problematic dependencies
+# Skip Japanese language support for spacy (needs Rust compiler for sudachipy)
+spacy==3.8.7
+# No spacy[ja] extras
+sudachipy
+sudachidict_core

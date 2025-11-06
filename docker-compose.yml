@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Main inference runtime (CPU mode for local dev)
+  runtime:
+    build:
+      context: ./runtime
+      dockerfile: Dockerfile
+    container_name: realtime-avatar-runtime
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./assets:/app/assets:ro
+      - ./runtime:/app:rw
+      - model-cache:/root/.cache
+      - output-data:/tmp/realtime-avatar-output
+    environment:
+      - MODE=local
+      - DEVICE=cpu
+      - LOG_LEVEL=info
+      - XTTS_MODEL_PATH=/root/.cache/tts_models
+      - LIVEPORTRAIT_MODEL_PATH=/root/.cache/liveportrait
+    command: python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+  # Evaluator (runs on-demand)
+  evaluator:
+    build:
+      context: ./evaluator
+      dockerfile: Dockerfile
+    container_name: realtime-avatar-evaluator
+    volumes:
+      - ./evaluator:/app:rw
+      - ./assets:/app/assets:ro
+      - ./evaluator/outputs:/app/outputs:rw
+    environment:
+      - RUNTIME_URL=http://runtime:8000
+      - MODE=local
+    depends_on:
+      - runtime
+    profiles:
+      - evaluator  # Only runs when explicitly called
+
+volumes:
+  model-cache:
+  output-data:

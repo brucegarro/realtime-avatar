@@ -1,0 +1,18 @@
+# HTTP client
+httpx==0.26.0
+
+# Audio/Video analysis
+librosa==0.10.1
+soundfile==0.12.1
+opencv-python==4.9.0.80
+numpy<2.0.0
+
+# Language detection
+langdetect==1.0.9
+
+# Voice similarity (speaker embeddings)
+resemblyzer==0.1.1.dev0
+
+# Testing utilities
+pytest==7.4.3
+pytest-asyncio==0.21.1

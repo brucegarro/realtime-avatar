@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# PyTorch / Model caches
+.cache/
+*.pth
+*.ckpt
+*.safetensors
+
+# Output files
+/evaluator/outputs/*.json
+/evaluator/outputs/*.mp4
+/runtime/outputs/
+*.mp4
+*.wav
+*.mp3
+
+# Environment
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Terraform
+infrastructure/.terraform/
+infrastructure/*.tfstate
+infrastructure/*.tfstate.backup
+infrastructure/.terraform.lock.hcl
+infrastructure/terraform.tfvars
+
+# Node (for web UI)
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+
+# Keep certain directories but ignore contents
+/evaluator/outputs/*
+!/evaluator/outputs/.gitkeep
