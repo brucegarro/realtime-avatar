@@ -62,7 +62,7 @@ RUN pip install --no-cache-dir --no-deps TTS==0.22.0 && \
     'bnnumerizer' \
     'bnunicodenormalizer' \
     'einops>=0.6.0' \
-    'transformers>=4.33.0' \
+    'transformers==4.35.2' \
     'encodec>=0.1.1' \
     'unidecode>=1.3.2' \
     'num2words' \

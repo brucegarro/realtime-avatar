@@ -8,6 +8,7 @@ pydantic-settings==2.1.0
 TTS==0.22.0
 torch==2.1.2
 torchaudio==2.1.2
+transformers==4.35.2
 numpy<2.0.0
 
 # Avatar animation - LivePortrait
