@@ -1,10 +1,21 @@
 """
 Configuration management for runtime service.
-Supports both local (CPU) and production (GPU) modes.
+Supports local (CPU/MPS), and production (GPU) modes.
 """
 from pydantic_settings import BaseSettings
 from typing import Literal
 import os
+import torch
+
+
+def auto_detect_device() -> str:
+    """Auto-detect best available device (MPS for M1/M2/M3, CUDA for NVIDIA, CPU fallback)"""
+    if torch.backends.mps.is_available():
+        return "mps"  # Apple Silicon GPU
+    elif torch.cuda.is_available():
+        return "cuda"  # NVIDIA GPU
+    else:
+        return "cpu"
 
 
 class Settings(BaseSettings):
@@ -12,7 +23,7 @@ class Settings(BaseSettings):
     
     # Execution mode
     mode: Literal["local", "production"] = "local"
-    device: Literal["cpu", "cuda"] = "cpu"
+    device: Literal["cpu", "cuda", "mps"] = auto_detect_device()
     
     # Server config
     host: str = "0.0.0.0"
@@ -77,5 +88,5 @@ def is_local() -> bool:
 
 
 def is_gpu_available() -> bool:
-    """Check if GPU is available"""
-    return settings.device == "cuda"
+    """Check if GPU (CUDA or MPS) is available"""
+    return settings.device in ("cuda", "mps")

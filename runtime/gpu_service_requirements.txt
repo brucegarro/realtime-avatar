@@ -1,0 +1,29 @@
+# GPU Service Requirements
+# For running the GPU acceleration service locally (M3) or remotely (GCP)
+
+# Core ML frameworks
+torch==2.1.2
+torchaudio==2.1.2
+
+# TTS
+TTS==0.22.0
+transformers==4.35.2
+
+# Audio processing
+soundfile==0.12.1
+librosa==0.10.1
+# numpy version compatible with both TTS (requires 1.22.0) and librosa (excludes 1.22.x)
+# Installing TTS first, then librosa should handle this conflict
+numpy>=1.20.3
+
+# API framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# HTTP client (for testing)
+httpx==0.26.0
+
+# Utils
+python-multipart==0.0.6
+aiofiles==23.2.1
