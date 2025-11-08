@@ -39,43 +39,42 @@ class Phase1TestScenarios:
                 'language': 'es',
                 'reference_image': 'bruce_neutral.jpg',
                 'expected_duration_range': (1.0, 3.0)
+            },
+            # Medium-length tests - Re-enabled with GPU acceleration
+            {
+                'id': 'en_medium',
+                'name': 'English Medium',
+                'text': (
+                    "Welcome to my digital avatar system. "
+                    "I can speak multiple languages and generate realistic video responses. "
+                    "This is a demonstration of Phase 1 capabilities."
+                ),
+                'language': 'en',
+                'reference_image': 'bruce_smiling.jpg',
+                'expected_duration_range': (5.0, 10.0)
+            },
+            {
+                'id': 'zh_medium',
+                'name': 'Chinese Medium',
+                'text': (
+                    "欢迎来到我的数字化身系统。"
+                    "我可以说多种语言并生成逼真的视频响应。"
+                    "这是第一阶段能力的演示。"
+                ),
+                'language': 'zh-cn',
+                'reference_image': 'bruce_smiling.jpg',
+                'expected_duration_range': (5.0, 10.0)
+            },
+            {
+                'id': 'es_medium',
+                'name': 'Spanish Medium',
+                'text': (
+                    "Bienvenido a mi sistema de avatar digital. "
+                    "Puedo hablar varios idiomas y generar respuestas de video realistas. "
+                    "Esta es una demostración de las capacidades de la Fase 1."
+                ),
+                'language': 'es',
+                'reference_image': 'bruce_smiling.jpg',
+                'expected_duration_range': (5.0, 10.0)
             }
-            # Medium-length tests DISABLED - timeout on CPU (>5min generation time)
-            # Re-enable when running on GPU or increase timeout to 10+ minutes
-            # {
-            #     'id': 'en_medium',
-            #     'name': 'English Medium',
-            #     'text': (
-            #         "Welcome to my digital avatar system. "
-            #         "I can speak multiple languages and generate realistic video responses. "
-            #         "This is a demonstration of Phase 1 capabilities."
-            #     ),
-            #     'language': 'en',
-            #     'reference_image': 'bruce_smiling.jpg',
-            #     'expected_duration_range': (5.0, 10.0)
-            # },
-            # {
-            #     'id': 'zh_medium',
-            #     'name': 'Chinese Medium',
-            #     'text': (
-            #         "欢迎来到我的数字化身系统。"
-            #         "我可以说多种语言并生成逼真的视频响应。"
-            #         "这是第一阶段能力的演示。"
-            #     ),
-            #     'language': 'zh-cn',
-            #     'reference_image': 'bruce_smiling.jpg',
-            #     'expected_duration_range': (5.0, 10.0)
-            # },
-            # {
-            #     'id': 'es_medium',
-            #     'name': 'Spanish Medium',
-            #     'text': (
-            #         "Bienvenido a mi sistema de avatar digital. "
-            #         "Puedo hablar varios idiomas y generar respuestas de video realistas. "
-            #         "Esta es una demostración de las capacidades de la Fase 1."
-            #     ),
-            #     'language': 'es',
-            #     'reference_image': 'bruce_smiling.jpg',
-            #     'expected_duration_range': (5.0, 10.0)
-            # }
         ]

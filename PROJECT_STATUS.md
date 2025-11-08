@@ -8,12 +8,23 @@
 **Lines of Code:** 2,100+  
 **Architecture:** Hybrid Docker + Native GPU Service  
 
-## � Latest Update (Nov 7, 2025) - GPU Acceleration
+## 🚀 Latest Update (Nov 7, 2025) - GPU Acceleration
 
-### 🎯 Major Achievement: 93x Faster Generation!
-- **Previous (CPU):** ~126s for 4.5s audio (27x slower than realtime)
-- **Now (M3 MPS):** ~1.35s for 2.5s audio (**faster than realtime!**)
-- **Speedup:** ~93x improvement on TTS generation
+### 🎯 Major Achievement: 17x Faster + 100% Success Rate!
+- **Previous (CPU):** 95.9s avg TTS, 69% success rate, 4 timeouts
+- **Now (M3 MPS):** 5.7s avg TTS, 100% success rate, 0 timeouts
+- **Performance:** Faster than realtime (0.7x) on average
+
+### 📊 Benchmark Results (6 Tests: 3 Short + 3 Medium)
+```
+Success Rate:    100% (6/6) ✅  [was 69%]
+Avg TTS Time:    5.7s       ⚡  [was 95.9s]
+Speed vs RT:     0.7x       🚀  [was 27x slower]
+Total Runtime:   48s        ✅  [was ~15 min]
+Medium Tests:    0 timeouts ✅  [was 4 timeouts]
+```
+
+**Full Results:** [BENCHMARK_RESULTS_GPU.md](BENCHMARK_RESULTS_GPU.md)
 
 ### 🏗️ Hybrid Architecture
 ```
