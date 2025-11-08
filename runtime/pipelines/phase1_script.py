@@ -97,7 +97,7 @@ class Phase1Pipeline:
                 text=text,
                 language=language,
                 speaker_wav=voice_sample_path,
-                output_path=os.path.join(settings.output_dir, f"{job_id}_audio.wav")
+                output_path=os.path.join("/tmp/gpu-service-output", f"{job_id}_audio.wav")
             )
             
             logger.info(f"[{job_id}] TTS completed: {tts_duration_ms:.0f}ms, audio: {audio_duration_s:.2f}s")
@@ -116,7 +116,7 @@ class Phase1Pipeline:
             video_path, avatar_duration_ms = self.avatar_model.animate(
                 audio_path=audio_path,
                 reference_image_path=image_path,
-                output_path=os.path.join(settings.output_dir, f"{job_id}_video.mp4")
+                output_path=os.path.join("/tmp/gpu-service-output", f"{job_id}_video.mp4")
             )
             
             logger.info(f"[{job_id}] Avatar animation completed: {avatar_duration_ms:.0f}ms")

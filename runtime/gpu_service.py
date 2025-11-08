@@ -5,7 +5,7 @@ Runs ML inference tasks on GPU (MPS locally, CUDA remotely)
 
 Supports:
 - TTS (XTTS-v2)
-- Video Generation (LivePortrait) - future
+- Video Generation (SadTalker)
 - Lip Sync - future
 - Any GPU-accelerated ML task
 
@@ -15,6 +15,11 @@ Deployment modes:
 """
 import os
 import sys
+
+# Enable MPS fallback for operations not yet implemented (like grid_sampler_3d)
+# Most operations still use GPU, only unsupported ones fall back to CPU
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+
 import torch
 import logging
 from pathlib import Path
@@ -27,6 +32,7 @@ import uvicorn
 sys.path.insert(0, str(Path(__file__).parent))
 
 from models.tts import XTTSModel
+from models.sadtalker_model import SadTalkerModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +45,7 @@ app = FastAPI(
 
 # Global models
 tts_model = None
-# video_model = None  # Future: LivePortrait
+avatar_model = None  # SadTalker for video generation
 # lipsync_model = None  # Future
 
 
@@ -71,7 +77,7 @@ class TTSResponse(BaseModel):
 class VideoRequest(BaseModel):
     audio_path: str
     reference_image: str
-    mode: Literal["static", "liveportrait"] = "static"
+    mode: Literal["sadtalker"] = "sadtalker"
 
 
 class VideoResponse(BaseModel):
@@ -83,7 +89,7 @@ class VideoResponse(BaseModel):
 @app.on_event("startup")
 async def startup():
     """Initialize models with GPU acceleration"""
-    global tts_model
+    global tts_model, avatar_model
     
     device = detect_device()
     logger.info(f"🚀 GPU Service starting on device: {device}")
@@ -102,12 +108,12 @@ async def startup():
     tts_model.initialize()
     logger.info("✅ TTS model ready")
     
-    # Future: Initialize other models
-    # logger.info("Loading LivePortrait model...")
-    # video_model = LivePortraitModel()
-    # video_model.device = device
-    # video_model.initialize()
-    # logger.info("✅ Video model ready")
+    # Initialize SadTalker model
+    logger.info("Loading SadTalker model...")
+    avatar_model = SadTalkerModel()
+    avatar_model.device = device
+    avatar_model.initialize()
+    logger.info("✅ Avatar model ready")
 
 
 @app.get("/health")
@@ -115,7 +121,7 @@ async def health():
     """Health check with device info"""
     device = detect_device()
     return {
-        "status": "healthy" if tts_model and tts_model.is_ready() else "initializing",
+        "status": "healthy" if tts_model and tts_model.is_ready() and avatar_model and avatar_model.is_ready() else "initializing",
         "device": device,
         "capabilities": {
             "mps": torch.backends.mps.is_available(),
@@ -124,7 +130,7 @@ async def health():
         },
         "models": {
             "tts": tts_model.is_ready() if tts_model else False,
-            "video": False,  # Future: video_model.is_ready() if video_model else False
+            "avatar": avatar_model.is_ready() if avatar_model else False,
             "lipsync": False
         }
     }
@@ -173,15 +179,40 @@ async def generate_tts(request: TTSRequest):
         return TTSResponse(success=False, error=str(e))
 
 
-# Future: Video generation endpoint
-@app.post("/video/generate", response_model=VideoResponse)
-async def generate_video(request: VideoRequest):
-    """Generate talking head video (future implementation)"""
-    # Stub for now
-    return VideoResponse(
-        success=False,
-        error="Video generation not yet implemented - coming in Phase 2"
-    )
+@app.post("/avatar/generate", response_model=VideoResponse)
+async def generate_avatar(request: VideoRequest):
+    """Generate talking head video from audio + reference image"""
+    if not avatar_model or not avatar_model.is_ready():
+        raise HTTPException(status_code=503, detail="Avatar model not ready")
+    
+    try:
+        logger.info(f"Avatar request: audio={request.audio_path}, image={request.reference_image}")
+        
+        # Generate output path
+        output_dir = Path("/tmp/gpu-service-output")
+        output_dir.mkdir(exist_ok=True, parents=True)
+        
+        import time
+        timestamp = int(time.time() * 1000)
+        output_path = output_dir / f"avatar_{timestamp}.mp4"
+        
+        # Generate video using SadTalker (to be implemented)
+        video_path, generation_time = avatar_model.generate_video(
+            audio_path=request.audio_path,
+            reference_image_path=request.reference_image,
+            output_path=str(output_path)
+        )
+        
+        logger.info(f"✅ Avatar video generated in {generation_time:.0f}ms")
+        
+        return VideoResponse(
+            success=True,
+            video_path=video_path
+        )
+        
+    except Exception as e:
+        logger.error(f"Avatar generation failed: {e}", exc_info=True)
+        return VideoResponse(success=False, error=str(e))
 
 
 @app.get("/")
@@ -195,7 +226,7 @@ async def root():
         "endpoints": {
             "health": "/health",
             "tts": "/tts/generate",
-            "video": "/video/generate (stub)"
+            "avatar": "/avatar/generate"
         }
     }
 

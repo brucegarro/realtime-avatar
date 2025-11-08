@@ -1,13 +1,24 @@
 """
-XTTS-v2 Text-to-Speech wrapper
-Handles multilingual voice cloning (EN, ZH, ES)
+Text-to-Speech Model Handler
+Manages XTTS-v2 multilingual TTS with voice cloning
 """
-import logging
 import os
 import time
-from typing import Optional
 import torch
-import numpy as np
+import logging
+from typing import Optional, Tuple
+from pathlib import Path
+
+# Monkey patch for PyTorch 2.6+ compatibility with XTTS
+# PyTorch 2.6 changed torch.load() default to weights_only=True for security
+# XTTS needs weights_only=False to load custom classes
+import torch.serialization
+_original_torch_load = torch.load
+def _patched_torch_load(*args, **kwargs):
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_torch_load(*args, **kwargs)
+torch.load = _patched_torch_load
 
 from TTS.api import TTS
 from config import settings

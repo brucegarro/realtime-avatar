@@ -1,15 +1,14 @@
 """
 LivePortrait avatar animation wrapper
-Generates talking-head video from audio + reference image
+Generates talking-head video from audio + reference image using GPU service
 """
 import logging
 import os
 import time
 from typing import Optional
-import numpy as np
-import cv2
 
 from config import settings
+from models.avatar_client import get_avatar_client
 
 logger = logging.getLogger(__name__)
 
@@ -17,44 +16,38 @@ logger = logging.getLogger(__name__)
 class LivePortraitModel:
     """
     LivePortrait model wrapper for avatar animation.
-    
-    Note: This is a placeholder implementation. LivePortrait requires:
-    - Installing from GitHub: https://github.com/KwaiVGI/LivePortrait
-    - Pre-trained models
-    - GPU for real-time performance (CPU mode is slow)
-    
-    For Phase 1 MVP, we'll implement a simpler approach using face animation techniques.
+    Uses GPU service for actual generation (runs on M3 with MPS acceleration).
     """
     
     def __init__(self):
         self.device = settings.device
         self._initialized = False
-        self.model = None
+        self.client = None
         
     def initialize(self):
-        """Load LivePortrait model"""
+        """Initialize connection to GPU service"""
         if self._initialized:
             return
             
-        logger.info(f"Loading LivePortrait model on {self.device}...")
+        logger.info(f"Initializing avatar client (GPU service)...")
         start_time = time.time()
         
         try:
-            # TODO: Implement actual LivePortrait initialization
-            # For now, we'll use a placeholder that creates simple animated videos
-            logger.warning("LivePortrait not fully implemented - using placeholder animation")
+            # Get GPU service client
+            self.client = get_avatar_client()
+            self.client.initialize()
             
             self._initialized = True
             elapsed = time.time() - start_time
-            logger.info(f"Avatar model loaded in {elapsed:.2f}s")
+            logger.info(f"Avatar client initialized in {elapsed:.2f}s")
             
         except Exception as e:
-            logger.error(f"Failed to load avatar model: {e}")
+            logger.error(f"Failed to initialize avatar client: {e}")
             raise
     
     def is_ready(self) -> bool:
         """Check if model is initialized"""
-        return self._initialized
+        return self._initialized and self.client and self.client.is_ready()
     
     def animate(
         self,
@@ -89,87 +82,28 @@ class LivePortraitModel:
             
             logger.info(f"Animating avatar: audio={audio_path}, image={reference_image_path}")
             
-            # TODO: Implement actual LivePortrait animation
-            # For MVP, create a simple video with the reference image
-            self._create_simple_video(audio_path, reference_image_path, output_path)
+            # Call GPU service to generate video
+            video_path, _ = self.client.generate_video(
+                audio_path=audio_path,
+                reference_image_path=reference_image_path,
+                output_path=output_path
+            )
             
             duration_ms = (time.time() - start_time) * 1000
             logger.info(f"Avatar animation completed in {duration_ms:.0f}ms")
             
-            return output_path, duration_ms
+            return video_path, duration_ms
             
         except Exception as e:
             logger.error(f"Avatar animation failed: {e}", exc_info=True)
             raise
     
-    def _create_simple_video(
-        self,
-        audio_path: str,
-        image_path: str,
-        output_path: str
-    ):
-        """
-        Create a simple video by combining audio with a static/slightly animated image.
-        This is a placeholder until LivePortrait is fully integrated.
-        """
-        import subprocess
-        import soundfile as sf
-        
-        # Get audio duration
-        audio_data, sample_rate = sf.read(audio_path)
-        audio_duration = len(audio_data) / sample_rate
-        
-        # Load and resize image
-        img = cv2.imread(image_path)
-        if img is None:
-            raise ValueError(f"Failed to load image: {image_path}")
-        
-        target_width, target_height = settings.video_resolution
-        img_resized = cv2.resize(img, (target_width, target_height))
-        
-        # Save resized image temporarily
-        temp_img_path = os.path.join(settings.output_dir, "temp_frame.jpg")
-        cv2.imwrite(temp_img_path, img_resized)
-        
-        # Use ffmpeg to create video from image and audio
-        # Create a video by looping the image for the duration of the audio
-        fps = settings.video_fps
-        
-        cmd = [
-            'ffmpeg',
-            '-y',  # Overwrite output file
-            '-loop', '1',  # Loop the image
-            '-i', temp_img_path,  # Input image
-            '-i', audio_path,  # Input audio
-            '-c:v', 'libx264',  # Video codec
-            '-tune', 'stillimage',  # Optimize for still image
-            '-c:a', 'aac',  # Audio codec
-            '-b:a', '192k',  # Audio bitrate
-            '-pix_fmt', 'yuv420p',  # Pixel format
-            '-shortest',  # Stop when shortest input ends
-            '-r', str(fps),  # Frame rate
-            output_path
-        ]
-        
-        logger.debug(f"Running ffmpeg: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            logger.error(f"ffmpeg error: {result.stderr}")
-            raise RuntimeError(f"Failed to create video: {result.stderr}")
-        
-        # Clean up temp image
-        if os.path.exists(temp_img_path):
-            os.remove(temp_img_path)
-        
-        logger.info(f"Created simple video: {output_path}, duration: {audio_duration:.2f}s")
-    
     def cleanup(self):
-        """Cleanup model resources"""
-        if self.model:
-            del self.model
+        """Cleanup client resources"""
+        if self.client:
+            self.client.cleanup()
             self._initialized = False
-            logger.info("Avatar model cleaned up")
+            logger.info("Avatar client cleaned up")
 
 
 # Global instance

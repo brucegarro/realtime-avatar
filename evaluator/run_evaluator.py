@@ -105,6 +105,10 @@ class Evaluator:
             total_time = time.time() - start_time
             metrics['evaluator_total_time_s'] = total_time
             
+            # Print command to view the video
+            logger.info(f"✅ {scenario.get('name', scenario_id)} completed in {total_time:.1f}s")
+            logger.info(f"📹 View video: open {video_path}")
+            
             return {
                 'scenario_id': scenario_id,
                 'scenario_name': scenario.get('name', scenario_id),
@@ -386,6 +390,13 @@ async def main():
         logger.info(f"Successful: {summary['successful']}")
         logger.info(f"Failed: {summary['failed']}")
         logger.info(f"Success rate: {summary['success_rate']:.1%}")
+        
+        # Print all video paths for easy viewing
+        logger.info("\n=== Generated Videos ===")
+        for result in all_results:
+            if result['status'] == 'success':
+                video_path = result.get('video_path', 'N/A')
+                logger.info(f"open {video_path}  # {result['scenario_name']}")
         
     finally:
         await evaluator.close()
