@@ -1,12 +1,41 @@
 # GCP Deployment Guide - Quick Reference
 
+## Deployment Strategy: Hybrid Approach
+
+**Phase 1 (Weeks 1-2): SSH for Discovery** 🔍
+- Manually deploy instances to test configurations
+- SSH access for debugging and iteration
+- Document what works in this file
+- Goal: Find optimal GPU type, config, and costs
+
+**Phase 2 (Week 3+): Terraform for Production** 🏗️
+- Codify working setup in Terraform
+- Push-to-deploy workflow (no SSH needed)
+- Separate environments: dev/staging/prod
+- Immutable infrastructure for training and inference
+
+**Current Phase:** Discovery (SSH-based testing)
+
 ## Current Status
 
 ✅ GCP project created: `realtime-avatar-bg`  
 ✅ Billing enabled  
 ✅ APIs enabled: Compute Engine, Storage, Artifact Registry  
 ✅ CUDA Docker image built  
-🔄 Docker image pushing to Artifact Registry  
+✅ Firewall rule created (port 8000)
+🔄 Instance provisioning in progress
+
+## Discovery Phase: Things to Learn
+
+During SSH testing, document:
+- [ ] Which GPU type gives best price/performance (T4, V100, L4, A100)
+- [ ] Optimal instance size (n1-standard-4 vs 8 vs 16)
+- [ ] GFPGAN performance on CUDA vs M3
+- [ ] Model loading time (affects cold start)
+- [ ] Actual costs per video generation
+- [ ] Memory requirements (peak GPU VRAM usage)
+- [ ] Autoscaling trigger metrics (CPU? GPU? Queue depth?)
+- [ ] Network egress costs (video downloads)
 
 ## Next Steps
 
@@ -185,11 +214,30 @@ curl http://localhost:8000/health
 
 ## Next Phase: Auto-scaling Setup
 
-After validating the single instance works:
-1. Create instance template from working setup
-2. Set up Managed Instance Group (MIG)
-3. Configure autoscaling policies
-4. Add Cloud Load Balancer
-5. Implement Pub/Sub queue for async processing
+After validating the single instance works and documenting findings:
+
+### Week 3: Terraform Infrastructure-as-Code
+1. ✅ Create `infrastructure/gcp/` directory structure
+2. ✅ Define instance templates in Terraform
+3. ✅ Set up Managed Instance Groups with autoscaling
+4. ✅ Configure Cloud Load Balancer
+5. ✅ Add Cloud Monitoring dashboards
+6. ✅ Implement Pub/Sub queue for async jobs
+
+### Week 4: CI/CD Pipeline
+1. ✅ GitHub Actions workflow for Docker builds
+2. ✅ Automatic push to Artifact Registry on merge
+3. ✅ Terraform plan/apply on infrastructure changes
+4. ✅ Blue/green deployments for zero-downtime updates
+5. ✅ Automated rollback on health check failures
+
+### Production Readiness Checklist
+- [ ] Terraform modules tested in staging environment
+- [ ] Load testing completed (100+ concurrent requests)
+- [ ] Cost monitoring and budget alerts configured
+- [ ] Logging and error tracking (Cloud Logging + Sentry)
+- [ ] Disaster recovery plan documented
+- [ ] Security audit (IAM roles, firewall rules, secrets management)
+- [ ] Documentation for team handoff
 
 See `CLOUD_DEPLOYMENT.md` for full architecture details.
