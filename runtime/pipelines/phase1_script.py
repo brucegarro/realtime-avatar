@@ -60,7 +60,8 @@ class Phase1Pipeline:
         language: str = "en",
         reference_image: Optional[str] = None,
         voice_sample: Optional[str] = None,
-        job_id: Optional[str] = None
+        job_id: Optional[str] = None,
+        enhancer: Optional[str] = None
     ) -> dict:
         """
         Generate talking-head video from text.
@@ -71,6 +72,7 @@ class Phase1Pipeline:
             reference_image: Reference image filename (in assets/images/)
             voice_sample: Voice reference filename (in assets/voice/reference_samples/)
             job_id: Unique job identifier
+            enhancer: Face enhancer to use ('gfpgan' or None)
             
         Returns:
             Dictionary with generation results and metrics
@@ -116,7 +118,8 @@ class Phase1Pipeline:
             video_path, avatar_duration_ms = self.avatar_model.animate(
                 audio_path=audio_path,
                 reference_image_path=image_path,
-                output_path=os.path.join("/tmp/gpu-service-output", f"{job_id}_video.mp4")
+                output_path=os.path.join("/tmp/gpu-service-output", f"{job_id}_video.mp4"),
+                enhancer=enhancer
             )
             
             logger.info(f"[{job_id}] Avatar animation completed: {avatar_duration_ms:.0f}ms")

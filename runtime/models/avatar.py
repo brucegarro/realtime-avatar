@@ -53,7 +53,8 @@ class LivePortraitModel:
         self,
         audio_path: str,
         reference_image_path: str,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
+        enhancer: Optional[str] = None
     ) -> tuple[str, float]:
         """
         Generate animated talking-head video from audio and reference image.
@@ -62,6 +63,7 @@ class LivePortraitModel:
             audio_path: Path to audio file (from TTS)
             reference_image_path: Path to reference image
             output_path: Output video file path
+            enhancer: Face enhancer to use ('gfpgan' or None)
             
         Returns:
             Tuple of (output_path, duration_ms)
@@ -86,7 +88,8 @@ class LivePortraitModel:
             video_path, _ = self.client.generate_video(
                 audio_path=audio_path,
                 reference_image_path=reference_image_path,
-                output_path=output_path
+                output_path=output_path,
+                enhancer=enhancer
             )
             
             duration_ms = (time.time() - start_time) * 1000

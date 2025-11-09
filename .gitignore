@@ -77,4 +77,5 @@ build/
 
 # Keep certain directories but ignore contents
 /evaluator/outputs/*.mp4  # Exclude video files
+/evaluator/outputs/**/*.mp4  # Exclude video files in subdirectories
 !/evaluator/outputs/*.json  # Include JSON test results

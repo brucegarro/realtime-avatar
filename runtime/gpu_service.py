@@ -78,6 +78,7 @@ class VideoRequest(BaseModel):
     audio_path: str
     reference_image: str
     mode: Literal["sadtalker"] = "sadtalker"
+    enhancer: Optional[str] = None  # 'gfpgan' or None
 
 
 class VideoResponse(BaseModel):
@@ -200,7 +201,8 @@ async def generate_avatar(request: VideoRequest):
         video_path, generation_time = avatar_model.generate_video(
             audio_path=request.audio_path,
             reference_image_path=request.reference_image,
-            output_path=str(output_path)
+            output_path=str(output_path),
+            enhancer=request.enhancer
         )
         
         logger.info(f"✅ Avatar video generated in {generation_time:.0f}ms")

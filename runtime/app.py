@@ -65,13 +65,15 @@ class ScriptRequest(BaseModel):
     language: str = "en"  # en, zh-cn, es
     reference_image: Optional[str] = None  # Filename in assets/images/
     voice_sample: Optional[str] = None  # Filename in assets/voice/reference_samples/
+    enhancer: Optional[str] = None  # Face enhancer: 'gfpgan' or None
     
     class Config:
         json_schema_extra = {
             "example": {
                 "text": "Hello! I'm Bruce's digital avatar. I can speak English, Chinese, and Spanish.",
                 "language": "en",
-                "reference_image": "bruce_neutral.jpg"
+                "reference_image": "bruce_neutral.jpg",
+                "enhancer": "gfpgan"
             }
         }
 
@@ -148,7 +150,8 @@ async def generate_video(request: ScriptRequest, background_tasks: BackgroundTas
             language=request.language,
             reference_image=request.reference_image,
             voice_sample=request.voice_sample,
-            job_id=job_id
+            job_id=job_id,
+            enhancer=request.enhancer
         )
         
         end_time = datetime.now()
