@@ -11,7 +11,7 @@ ENV/
 .venv
 
 # Runtime GPU service files
-/runtime/SadTalker/  # Cloned SadTalker repository
+runtime/SadTalker/  # Cloned SadTalker repository
 runtime/assets/  # Duplicate assets (use root-level assets/)
 runtime/venv_gpu/  # GPU virtual environment directory
 /runtime/models/sadtalker_model.py  # GPU-specific model wrapper
