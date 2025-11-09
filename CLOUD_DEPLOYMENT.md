@@ -334,6 +334,320 @@ def log_generation_metrics(duration_ms, encoder_type, gpu_util):
 - [ ] Benchmark end-to-end latency
 - [ ] Document final performance numbers
 
+## Scale-to-Zero Architecture (Cost Optimization)
+
+### The Cold Start Problem
+
+**Traditional Always-On Approach:**
+- Keep min=1 GPU instance running
+- Cost: T4 @ $0.35/hr × 24hr × 30 days = **$252/month idle**
+- Response time: ~1-2 seconds
+- ❌ Expensive for sporadic usage
+
+**Cold Start Anatomy (scale from 0→1):**
+```
+1. VM provisioning:        30-60 seconds
+2. Docker image pull:      60-90 seconds (if not cached)
+3. Model loading to VRAM:  30-60 seconds
+   - XTTS model:          ~15s
+   - SadTalker models:    ~30s
+   - GFPGAN (optional):   ~10s
+
+Total cold start: 2-4 minutes (unoptimized)
+```
+
+### Cold Start Optimization Strategies
+
+#### Strategy 1: Pre-baked Machine Image (30-45 second cold start) ⭐
+```
+Create custom GCP machine image:
+- Docker pre-installed and configured
+- Container images pre-pulled to local cache
+- Models pre-downloaded to instance image
+- Startup script auto-starts GPU service
+
+Cold start breakdown:
+1. VM boot from custom image:  30-40s
+2. Docker container start:     5-10s
+3. Model loading (cached):     10-15s
+
+Total: 45-65 seconds
+```
+
+**Implementation:**
+1. Launch T4 instance, set up everything
+2. Create machine image: `gcloud compute images create realtime-avatar-base`
+3. Use in instance template for MIG
+4. Result: 60-70% faster cold starts
+
+#### Strategy 2: Persistent Disk with Models (saves 20-30s)
+```
+- Attach 50GB SSD persistent disk
+- Pre-load all models: XTTS, SadTalker, GFPGAN, checkpoints
+- Mount at boot: /mnt/models
+- Symlink to expected locations
+
+Cold start savings: 20-30 seconds
+One-time setup, reuse across instances
+```
+
+#### Strategy 3: Container-Optimized OS + Cached Images (saves 30-60s)
+```
+- Use GCP Container-Optimized OS
+- Pre-pull Docker images to instance template
+- Configure Docker with local cache
+- Enable image streaming (Cloud Build)
+
+Cold start savings: 30-60 seconds
+```
+
+### Recommended Architecture: Spot VM Warm Pool
+
+**Hybrid approach balancing cost and response time:**
+
+```
+┌─────────────────────────────────────────────────┐
+│  Cloud Run (Orchestrator)                       │
+│  - Always on, cheap ($0.40/million requests)    │
+│  - Routes to GPU instances                      │
+│  - Manages queue + webhooks                     │
+└──────────────┬──────────────────────────────────┘
+               ↓
+┌──────────────┴──────────────────────────────────┐
+│  Spot T4 Instance (Warm Pool)                   │
+│  - Cost: $0.10/hr (70% cheaper than standard)   │
+│  - Idle timeout: 10 minutes                     │
+│  - Auto-restart if preempted                    │
+│  - Response: 1-2 seconds when warm              │
+└──────────────┬──────────────────────────────────┘
+               ↓ (if spot preempted)
+┌──────────────┴──────────────────────────────────┐
+│  Managed Instance Group (Standard T4s)          │
+│  - min=0, max=5                                 │
+│  - Cold start: 45 seconds (optimized)           │
+│  - Scales based on queue depth                  │
+│  - Fallback when spot unavailable               │
+└─────────────────────────────────────────────────┘
+```
+
+**Cost Analysis:**
+| Approach | Monthly Cost | Response Time | Best For |
+|----------|-------------|---------------|----------|
+| Always-on Standard T4 | $252 | 1-2s | High traffic production |
+| Always-on Spot T4 | $72 | 1-2s | Medium traffic |
+| Spot with 10min timeout | $10-30 | 1-2s warm, 45s cold | Sporadic usage ⭐ |
+| Pure scale-to-zero (MIG) | $5-20 | 45s cold | Very low traffic |
+
+### Auto-Scaling Configuration
+
+**Managed Instance Group Setup:**
+```yaml
+# instance-template-config.yaml
+instance_template:
+  name: realtime-avatar-gpu
+  machine_type: n1-standard-4
+  accelerators:
+    - type: nvidia-tesla-t4
+      count: 1
+  
+  # Use pre-baked image
+  source_image: realtime-avatar-base-v1
+  
+  # Startup script
+  metadata:
+    startup-script: |
+      #!/bin/bash
+      docker start gpu-service || docker run -d ...
+      
+autoscaler:
+  min_replicas: 0  # Scale to zero
+  max_replicas: 5
+  
+  # Scale up policy
+  scale_up:
+    - metric: pubsub.googleapis.com/subscription/num_undelivered_messages
+      target: 5  # Spin up instance if >5 messages in queue
+      
+  # Scale down policy  
+  scale_down:
+    cooldown_period: 600  # 10 minutes idle before shutdown
+    - metric: custom.googleapis.com/gpu_utilization
+      target: 10  # Shutdown if <10% utilized for 10min
+```
+
+**Cloud Scheduler for Business Hours Warmup:**
+```yaml
+# Keep warm during business hours only
+- name: warmup-morning
+  schedule: "0 9 * * 1-5"  # 9am Mon-Fri
+  target: pubsub
+  message: '{"action": "warmup"}'
+
+- name: cooldown-evening  
+  schedule: "0 18 * * 1-5"  # 6pm Mon-Fri
+  target: compute
+  action: stop_instance
+```
+
+**Result:**
+- 9am-6pm weekdays: 1-2 second response (warm)
+- Nights/weekends: 45 second cold start (rare)
+- Monthly cost: ~$15-25 instead of $252
+
+### Async Processing Pattern
+
+**For acceptable UX with cold starts:**
+
+```python
+# Cloud Run orchestrator endpoint
+@app.route('/generate', methods=['POST'])
+def generate_video_async():
+    """Async video generation with webhook notification"""
+    
+    # Create job ID
+    job_id = str(uuid.uuid4())
+    
+    # Publish to Pub/Sub queue
+    publisher.publish(
+        topic='video-generation-queue',
+        data=json.dumps({
+            'job_id': job_id,
+            'audio_text': request.json['text'],
+            'image_path': request.json['image'],
+            'webhook_url': request.json.get('webhook_url'),
+            'enhancer': request.json.get('enhancer')  # 'gfpgan' or None
+        }).encode()
+    )
+    
+    # Return job ID immediately
+    return jsonify({
+        'job_id': job_id,
+        'status': 'queued',
+        'estimated_time_seconds': 45,  # If cold, 10 if warm
+        'status_url': f'/status/{job_id}'
+    }), 202
+
+# GPU instance polls queue
+def process_queue():
+    """GPU instance worker"""
+    subscription = subscriber.subscribe(subscription_path)
+    
+    for message in subscription:
+        job = json.loads(message.data)
+        
+        # Generate video
+        result = generate_video(
+            text=job['audio_text'],
+            image=job['image_path'],
+            enhancer=job['enhancer']
+        )
+        
+        # Store result
+        storage_client.upload(result, f"results/{job['job_id']}.mp4")
+        
+        # Notify webhook
+        if job.get('webhook_url'):
+            requests.post(job['webhook_url'], json={
+                'job_id': job['job_id'],
+                'status': 'completed',
+                'video_url': f"gs://bucket/results/{job['job_id']}.mp4"
+            })
+        
+        message.ack()
+```
+
+**User Experience:**
+1. Client submits request → Gets job_id in 100ms
+2. Client polls `/status/{job_id}` or waits for webhook
+3. GPU spins up (if cold): 45 seconds
+4. Video generates: 10-15 seconds
+5. Client receives completion notification
+6. Total: 55-60 seconds worst case, 10-15 if warm
+
+### GFPGAN Performance on Cloud GPUs
+
+**Current local performance (M3 MPS):**
+- GFPGAN runs on CPU only (no MPS support)
+- Processing time: ~1.44s per frame
+- Total overhead: 5-10x slower (240s vs 35s for 5.6s video)
+
+**Expected cloud performance (CUDA):**
+```
+T4 GPU with CUDA:
+- GFPGAN on GPU: ~0.15-0.2s per frame
+- Speedup: 7-10x faster than M3 CPU
+- Total overhead: 10-20s for 5.6s video (vs 240s on M3)
+
+V100 GPU:
+- GFPGAN on GPU: ~0.08-0.1s per frame  
+- Speedup: 15-20x faster than M3 CPU
+- Total overhead: 5-10s for 5.6s video
+
+Recommendation:
+- Offer GFPGAN as optional "quality" mode
+- Standard mode: Fast (10-15s)
+- Quality mode: +10-20s for enhanced faces
+- User can choose speed vs quality
+```
+
+### Monitoring & Alerting
+
+**Key metrics for scale-to-zero:**
+```python
+# Track cold start performance
+metrics_to_monitor = {
+    'cold_start_duration_seconds': 'Time from scale-up to ready',
+    'instance_idle_time_seconds': 'Time since last request',
+    'queue_depth': 'Unprocessed jobs in Pub/Sub',
+    'spot_preemption_count': 'How often spot VMs interrupted',
+    'cost_per_day': 'Daily spend tracking',
+    'requests_while_cold': 'Users experiencing cold start'
+}
+
+# Alerting rules
+alerts = [
+    {
+        'name': 'High Cold Start Rate',
+        'condition': 'cold_start_rate > 0.5',  # >50% requests hit cold start
+        'action': 'Increase min_replicas to 1'
+    },
+    {
+        'name': 'Budget Exceeded',
+        'condition': 'daily_cost > $5',
+        'action': 'Email alert + reduce max_replicas'
+    },
+    {
+        'name': 'Queue Backing Up',
+        'condition': 'queue_depth > 20',
+        'action': 'Force scale up to max_replicas'
+    }
+]
+```
+
+### Cost Optimization Best Practices
+
+1. **Right-size instances**: Don't use A100 if T4 meets requirements
+2. **Committed use discounts**: If baseline >8 hours/day, commit for 30% savings
+3. **Regional selection**: us-central1 is cheapest for GPUs
+4. **Preemptible for batch**: Use spot VMs for non-urgent training jobs
+5. **Storage lifecycle**: Auto-delete generated videos after 7 days
+6. **Egress optimization**: Serve videos from Cloud CDN (cheaper bandwidth)
+
+### Migration Checklist (Scale-to-Zero Setup)
+
+- [ ] Create pre-baked machine image with models
+- [ ] Set up Cloud Run orchestrator service
+- [ ] Configure Pub/Sub queue for async jobs
+- [ ] Create instance template with autoscaling (min=0)
+- [ ] Test cold start time (target: <60s)
+- [ ] Implement health check warming
+- [ ] Add Cloud Scheduler for business hours
+- [ ] Set up cost monitoring and budget alerts
+- [ ] Test spot VM preemption handling
+- [ ] Document webhook/polling flow for clients
+- [ ] Load test: 0→5 instances scaling
+- [ ] Verify scale-down after idle timeout
+
 ## Future Optimizations
 
 1. **Frame Prediction**: Encode predicted frame while GPU renders actual (hide latency)
@@ -342,8 +656,10 @@ def log_generation_metrics(duration_ms, encoder_type, gpu_util):
 4. **Caching**: Cache common phrases/faces for instant delivery
 5. **Edge Deployment**: CDN caching for popular content
 6. **WebRTC**: Real-time bidirectional streaming for interactive avatars
+7. **Serverless GPU**: Monitor Cloud Run GPU preview for true serverless
+8. **Third-party platforms**: Evaluate RunPod/Modal for easier scale-to-zero
 
 ---
 
-**Last Updated**: November 7, 2025
-**Version**: 1.0 (Initial draft for Option 4 implementation)
+**Last Updated**: November 9, 2025
+**Version**: 2.0 (Added scale-to-zero architecture and cold start optimization)
