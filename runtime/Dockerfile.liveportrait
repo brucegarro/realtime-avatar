@@ -1,0 +1,112 @@
+# LivePortrait-Only Dockerfile for Cloud Production (CUDA)
+# Optimized for GCP L4 GPU deployment - No SadTalker dependencies
+
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# Install Python 3.11 and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    ffmpeg \
+    libsndfile1 \
+    libsndfile1-dev \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    pkg-config \
+    git \
+    build-essential \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Upgrade pip
+RUN python -m pip install --no-cache-dir --upgrade pip wheel setuptools
+
+# Install PyTorch with CUDA 11.8 support
+RUN pip install --no-cache-dir torch==2.1.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+
+# Install core web framework
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn[standard]==0.27.0 \
+    pydantic==2.5.3 \
+    pydantic-settings==2.1.0 \
+    httpx==0.26.0 \
+    python-multipart==0.0.6 \
+    aiofiles==23.2.1 \
+    'numpy<2.0.0'
+
+# Install TTS dependencies
+RUN pip install --no-cache-dir --no-deps TTS==0.22.0 && \
+    pip install --no-cache-dir \
+    'cython>=0.29.30' \
+    'scipy>=1.11.4' \
+    'scikit-learn>=1.3.0' \
+    'numba>=0.57.0' \
+    'inflect>=5.6.0' \
+    'tqdm>=4.64.1' \
+    'anyascii>=0.3.0' \
+    'pyyaml>=6.0' \
+    'fsspec>=2023.6.0' \
+    'aiohttp>=3.8.1' \
+    'packaging>=23.1' \
+    'pysbd>=0.3.4' \
+    'pandas<2.0,>=1.4' \
+    'transformers>=4.33.0' \
+    'coqpit>=0.0.16' \
+    'librosa>=0.10.0' \
+    'matplotlib>=3.7.0' \
+    'trainer>=0.0.32' \
+    'einops>=0.6.0'
+
+# Install audio processing
+RUN pip install --no-cache-dir \
+    soundfile==0.12.1 \
+    librosa==0.10.1 \
+    audioread==3.0.1
+
+# Install LivePortrait dependencies
+WORKDIR /app
+RUN git clone https://github.com/KwaiVGI/LivePortrait.git && \
+    cd LivePortrait && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+WORKDIR /app
+COPY gpu_service.py .
+COPY config.py .
+COPY models/ ./models/
+COPY utils/ ./utils/
+
+# Download LivePortrait models at build time
+RUN cd LivePortrait && \
+    python scripts/download_models.py || echo "Models will download at runtime"
+
+# Create output directory
+RUN mkdir -p /tmp/gpu-service-output
+
+# Set environment
+ENV AVATAR_BACKEND=liveportrait
+ENV USE_CUDA=true
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Start service
+CMD ["python", "-m", "uvicorn", "gpu_service:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -3,17 +3,16 @@ services:
   gpu-service:
     build:
       context: ./runtime
-      dockerfile: Dockerfile.gpu-service
+      # Use LivePortrait-only Dockerfile for production
+      dockerfile: ${GPU_DOCKERFILE:-Dockerfile.liveportrait}
       args:
-        CUDA: "${USE_CUDA:-false}"  # Set USE_CUDA=true for NVIDIA GPUs
+        CUDA: "${USE_CUDA:-false}"
     container_name: realtime-avatar-gpu
     ports:
       - "8001:8001"
     volumes:
       # Share assets with host and other services
       - ./runtime/assets:/app/assets:ro
-      - ./runtime/SadTalker/checkpoints:/app/SadTalker/checkpoints
-      - ./runtime/gfpgan/weights:/app/gfpgan/weights
       # Model cache for downloads
       - model-cache:/root/.cache
       # Shared output directory
@@ -21,9 +20,9 @@ services:
     environment:
       - PORT=8001
       - HOST=0.0.0.0
-      - PYTORCH_ENABLE_MPS_FALLBACK=1
       - COQUI_TOS_AGREED=1  # Auto-accept TTS license
-      - AVATAR_BACKEND=${AVATAR_BACKEND:-auto}  # auto, sadtalker, liveportrait
+      - AVATAR_BACKEND=${AVATAR_BACKEND:-liveportrait}
+      - USE_CUDA=${USE_CUDA:-true}
     # Enable GPU access (for CUDA/NVIDIA)
     deploy:
       resources:
