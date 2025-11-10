@@ -1,0 +1,173 @@
+# Ditto TalkingHead Production Image
+# Audio-driven talking head synthesis built on LivePortrait
+# Optimized for L4 GPU on GCP with CUDA 11.8
+
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3-dev \
+    ffmpeg \
+    libsndfile1 \
+    libsndfile1-dev \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    pkg-config \
+    git \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symlinks for python
+RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+
+# Install PyTorch with CUDA 11.8 support
+RUN pip install --no-cache-dir \
+    torch==2.1.2 \
+    torchvision==0.16.2 \
+    torchaudio==2.1.2 \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Install core dependencies
+RUN pip install --no-cache-dir \
+    'numpy<2.0.0' \
+    'scipy>=1.11.4' \
+    'scikit-image>=0.22.0'
+
+# Install FastAPI and web framework
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn[standard]==0.27.0 \
+    pydantic==2.5.3 \
+    pydantic-settings==2.1.0 \
+    python-multipart==0.0.6 \
+    aiofiles==23.2.1 \
+    httpx==0.26.0
+
+# Install TTS dependencies (XTTS-v2)
+# Install TTS without deps to avoid sudachipy (needs Rust)
+RUN pip install --no-cache-dir --no-deps TTS==0.22.0 && \
+    pip install --no-cache-dir \
+    'cython>=0.29.30' \
+    'scikit-learn>=1.3.0' \
+    'numba>=0.57.0' \
+    'inflect>=5.6.0' \
+    'tqdm>=4.64.1' \
+    'anyascii>=0.3.0' \
+    'pyyaml>=6.0' \
+    'fsspec>=2023.6.0' \
+    'aiohttp>=3.8.1' \
+    'packaging>=23.1' \
+    'flask>=2.0.1' \
+    'pysbd>=0.3.4' \
+    'pandas<2.0,>=1.4' \
+    'matplotlib>=3.7.0' \
+    'umap-learn>=0.5.1' \
+    'trainer>=0.0.32' \
+    'coqpit>=0.0.16' \
+    'jieba' \
+    'pypinyin' \
+    'hangul_romanize' \
+    'jamo' \
+    'nltk' \
+    'g2pkk>=0.1.1' \
+    'bangla' \
+    'bnnumerizer' \
+    'bnunicodenormalizer' \
+    'einops>=0.6.0' \
+    'transformers==4.35.2' \
+    'encodec>=0.1.1' \
+    'unidecode>=1.3.2' \
+    'num2words' \
+    'gruut[de,es,fr]==2.2.3' \
+    'spacy>=3'
+
+# Install Ditto-specific dependencies
+RUN pip install --no-cache-dir \
+    opencv-python-headless==4.9.0.80 \
+    pillow==10.2.0 \
+    imageio==2.33.1 \
+    imageio-ffmpeg==0.4.9 \
+    ffmpeg-python==0.2.0 \
+    pydub==0.25.1 \
+    librosa==0.10.1 \
+    soundfile==0.12.1 \
+    resampy==0.4.3 \
+    filetype==1.2.0 \
+    mediapipe==0.10.9 \
+    timm==0.9.12 \
+    kornia==0.7.1 \
+    tyro==0.7.2 \
+    omegaconf==2.3.0 \
+    onnxruntime-gpu==1.17.0 \
+    langdetect==1.0.9
+
+# Clone Ditto repository
+RUN git clone https://github.com/antgroup/ditto-talkinghead.git /app/ditto-talkinghead
+
+# Download Ditto models
+# Config file
+RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_cfg && \
+    cd /app/ditto-talkinghead/checkpoints/ditto_cfg && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/v0.4_hubert_cfg_pytorch.pkl
+
+# PyTorch models
+RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_pytorch/models && \
+    cd /app/ditto-talkinghead/checkpoints/ditto_pytorch/models && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/appearance_extractor.pth && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/decoder.pth && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/lmdm_v0.4_hubert.pth && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/motion_extractor.pth && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/stitch_network.pth && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/warp_network.pth
+
+# Auxiliary models
+RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_pytorch/aux_models && \
+    cd /app/ditto-talkinghead/checkpoints/ditto_pytorch/aux_models && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/2d106det.onnx && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/det_10g.onnx && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/face_landmarker.task && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/hubert_streaming_fix_kv.onnx && \
+    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/landmark203.onnx
+
+# Copy application code
+COPY . /app/runtime
+WORKDIR /app/runtime
+
+# Set Python path to include both runtime and ditto directories
+ENV PYTHONPATH=/app/runtime:/app/ditto-talkinghead:$PYTHONPATH
+
+# Environment variables
+ENV AVATAR_BACKEND=ditto
+ENV CUDA_VISIBLE_DEVICES=0
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8001/health')" || exit 1
+
+# Run GPU service
+CMD ["python", "gpu_service.py"]

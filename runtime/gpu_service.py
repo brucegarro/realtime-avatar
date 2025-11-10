@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from models.tts import XTTSModel
 # Conditionally import avatar models based on backend config
-AVATAR_BACKEND = os.getenv("AVATAR_BACKEND", "auto")  # auto, sadtalker, liveportrait
+AVATAR_BACKEND = os.getenv("AVATAR_BACKEND", "auto")  # auto, sadtalker, liveportrait, ditto
 
 # Only import models we'll actually use
 if AVATAR_BACKEND in ("auto", "sadtalker"):
@@ -45,6 +45,11 @@ if AVATAR_BACKEND in ("auto", "liveportrait"):
     from models.liveportrait_model import LivePortraitModel
 else:
     LivePortraitModel = None
+
+if AVATAR_BACKEND == "ditto":
+    from models.ditto_model import DittoModel
+else:
+    DittoModel = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -106,11 +111,14 @@ def select_avatar_backend(device: str, preference: str = "auto") -> str:
     Select optimal avatar backend based on device and preference
     
     Strategy:
-    - CUDA: Prefer LivePortrait (faster, better quality)
+    - CUDA + ditto: Use Ditto (audio-driven, real-time capable)
+    - CUDA + auto: Prefer LivePortrait (faster, better quality)  
     - MPS: Use SadTalker (more compatible)
     - CPU: Use SadTalker (fallback)
     """
-    if preference != "auto":
+    if preference == "ditto":
+        return "ditto"
+    elif preference != "auto":
         return preference
     
     if device == "cuda":
@@ -147,7 +155,14 @@ async def startup():
     avatar_backend_name = select_avatar_backend(device, AVATAR_BACKEND)
     logger.info(f"Loading avatar backend: {avatar_backend_name}")
     
-    if avatar_backend_name == "liveportrait":
+    if avatar_backend_name == "ditto":
+        if DittoModel is None:
+            raise RuntimeError("Ditto backend requested but not available")
+        avatar_model = DittoModel()
+        avatar_model.device = device
+        # Ditto will initialize when first called (needs to be in ditto-talkinghead directory)
+        logger.info("✅ Ditto model loaded (will initialize on first use)")
+    elif avatar_backend_name == "liveportrait":
         if LivePortraitModel is None:
             raise RuntimeError("LivePortrait backend requested but not available")
         try:

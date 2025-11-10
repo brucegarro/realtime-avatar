@@ -3,8 +3,8 @@ services:
   gpu-service:
     build:
       context: ./runtime
-      # Use LivePortrait-only Dockerfile for production
-      dockerfile: ${GPU_DOCKERFILE:-Dockerfile.liveportrait}
+      # Use Ditto for audio-driven talking heads (default), or override with GPU_DOCKERFILE
+      dockerfile: ${GPU_DOCKERFILE:-Dockerfile.ditto}
       args:
         CUDA: "${USE_CUDA:-false}"
     container_name: realtime-avatar-gpu
@@ -21,7 +21,7 @@ services:
       - PORT=8001
       - HOST=0.0.0.0
       - COQUI_TOS_AGREED=1  # Auto-accept TTS license
-      - AVATAR_BACKEND=${AVATAR_BACKEND:-liveportrait}
+      - AVATAR_BACKEND=${AVATAR_BACKEND:-ditto}
       - USE_CUDA=${USE_CUDA:-true}
     # Enable GPU access (for CUDA/NVIDIA)
     deploy:

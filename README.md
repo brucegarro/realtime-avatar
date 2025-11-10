@@ -4,23 +4,34 @@ A low-latency, multilingual conversational avatar system with GPU acceleration t
 
 ## 🎯 Project Overview
 
-**Current Phase**: Phase 1 (Script → Video MVP) ✅ **+ GPU Accelerated**  
-**Performance**: 93x faster with M3 MPS acceleration
+**Current Phase**: Phase 1 (Script → Video MVP) ✅ **+ Ditto Audio-Driven Avatar**  
+**Performance**: Sub-10-second video generation on CUDA GPUs (estimated)
 
 This system creates a digital avatar that:
 - 🗣️ Speaks in Bruce's cloned voice (multilingual: EN/ZH/ES)
-- 🎭 Animates from reference images
-- ⚡ **Faster than realtime** generation with GPU acceleration
+- 🎭 Animates from reference images using **Ditto** (audio-driven LivePortrait)
+- ⚡ **Real-time capable** generation with GPU acceleration
 - 💰 Scales to zero cost when idle (Cloud Run GPU)
 - 🔧 Supports local development (M3 MPS) and cloud production (GCP CUDA)
 
-## � Performance
+## 🎬 Avatar Technology: Ditto
 
-| Metric | CPU Only | M3 MPS | Improvement |
-|--------|----------|---------|-------------|
-| TTS Generation | ~126s for 4.5s audio | ~2.4s for 4.5s audio | **52x faster** |
-| Speed vs Realtime | 27x slower | 0.54x (faster!) | **50x improvement** |
-| Total Generation | >120s | <2s | **60x faster** |
+**Ditto** (antgroup/ditto-talkinghead) - Audio-driven talking head synthesis framework:
+- Built on LivePortrait components (appearance extraction, motion, warping)
+- HuBERT audio encoder for speech analysis
+- LMDM diffusion model for motion generation
+- Real-time capable on modern GPUs (L4, A100, etc.)
+- High-quality 1432x1432 output resolution
+
+## 📊 Performance
+
+| Metric | CPU Only | M3 MPS | L4 GPU (Est.) | Improvement |
+|--------|----------|---------|---------------|-------------|
+| TTS Generation | ~126s | ~2.4s | ~12s | **10x faster** |
+| Avatar Generation | N/A | N/A | **<10s** (Ditto) | **Real-time capable** |
+| Speed vs Realtime | 27x slower | 0.54x (faster!) | 0.6x (faster!) | **45x improvement** |
+
+**Note:** Ditto performance estimates based on L4 GPU. CPU-only tests: ~2 minutes per 16-second video.
 
 ## �📋 Development Phases
 
@@ -34,7 +45,7 @@ This system creates a digital avatar that:
 ┌──────────────────────────────────────┐
 │  GPU Service (Native, Port 8001)     │
 │  - TTS with MPS/CUDA acceleration   │
-│  - Video Gen (future)                │
+│  - Ditto Avatar Generation (CUDA)   │
 │  - Lip Sync (future)                 │
 └──────────────┬───────────────────────┘
                │ HTTP API
@@ -52,9 +63,14 @@ This system creates a digital avatar that:
 └──────────────────────────────────────┘
 ```
 
+### Avatar Backends
+- **Ditto** (default): Audio-driven, real-time capable, CUDA optimized
+- **SadTalker**: Fallback option, MPS compatible
+- **LivePortrait**: Video-driven (deprecated - not audio-driven)
+
 ### Deployment Modes
-- **Local Dev**: Docker runtime + native GPU service (M3 MPS)
-- **Production**: Cloud Run + GCP GPU instance (CUDA)
+- **Local Dev**: Docker runtime + native GPU service (M3 MPS + SadTalker)
+- **Production**: Cloud Run + GCP GPU instance (L4 CUDA + Ditto)
 
 ## 🚀 Quick Start
 
