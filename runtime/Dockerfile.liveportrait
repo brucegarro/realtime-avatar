@@ -76,6 +76,16 @@ RUN pip install --no-cache-dir \
     librosa==0.10.1 \
     audioread==3.0.1
 
+# Install TTS optional language dependencies (needed even if not used)
+RUN pip install --no-cache-dir \
+    jieba \
+    pypinyin \
+    bangla \
+    bnnumerizer \
+    bnunicodenormalizer \
+    num2words \
+    inflect
+
 # Install LivePortrait dependencies
 WORKDIR /app
 RUN git clone https://github.com/KwaiVGI/LivePortrait.git && \
