@@ -32,14 +32,22 @@ import uvicorn
 sys.path.insert(0, str(Path(__file__).parent))
 
 from models.tts import XTTSModel
-from models.sadtalker_model import SadTalkerModel
-from models.liveportrait_model import LivePortraitModel
+# Conditionally import avatar models based on backend config
+AVATAR_BACKEND = os.getenv("AVATAR_BACKEND", "auto")  # auto, sadtalker, liveportrait
+
+# Only import models we'll actually use
+if AVATAR_BACKEND in ("auto", "sadtalker"):
+    from models.sadtalker_model import SadTalkerModel
+else:
+    SadTalkerModel = None
+
+if AVATAR_BACKEND in ("auto", "liveportrait"):
+    from models.liveportrait_model import LivePortraitModel
+else:
+    LivePortraitModel = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Avatar backend configuration
-AVATAR_BACKEND = os.getenv("AVATAR_BACKEND", "auto")  # auto, sadtalker, liveportrait
 
 app = FastAPI(
     title="GPU Acceleration Service",
@@ -140,6 +148,8 @@ async def startup():
     logger.info(f"Loading avatar backend: {avatar_backend_name}")
     
     if avatar_backend_name == "liveportrait":
+        if LivePortraitModel is None:
+            raise RuntimeError("LivePortrait backend requested but not available")
         try:
             avatar_model = LivePortraitModel()
             avatar_model.device = device
@@ -147,13 +157,18 @@ async def startup():
             logger.info("✅ LivePortrait model ready")
         except Exception as e:
             logger.error(f"Failed to load LivePortrait: {e}")
-            logger.info("Falling back to SadTalker...")
-            avatar_backend_name = "sadtalker"
-            avatar_model = SadTalkerModel()
-            avatar_model.device = device
-            avatar_model.initialize()
-            logger.info("✅ SadTalker model ready (fallback)")
+            if SadTalkerModel is not None:
+                logger.info("Falling back to SadTalker...")
+                avatar_backend_name = "sadtalker"
+                avatar_model = SadTalkerModel()
+                avatar_model.device = device
+                avatar_model.initialize()
+                logger.info("✅ SadTalker model ready (fallback)")
+            else:
+                raise RuntimeError("LivePortrait failed and SadTalker not available")
     else:
+        if SadTalkerModel is None:
+            raise RuntimeError("SadTalker backend requested but not available")
         avatar_model = SadTalkerModel()
         avatar_model.device = device
         avatar_model.initialize()
