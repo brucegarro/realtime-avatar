@@ -37,6 +37,8 @@ Frame Writing:    394 frames in ~1m30s
 - ✅ Bruce neutral → 7.1MB video (2m14s)
 - ✅ Bruce professional → 1.8MB video (1m38s)
 - ✅ Bruce on boat → 1.6MB video (1m38s)
+- ✅ Bruce professional + 41s expressive audio → 4.8MB video (3m47s)
+- ✅ Bruce neutral + 21s expressive audio → 8.8MB video (2m13s)
 
 **Expected Performance with CUDA:**
 - 🚀 **Estimated:** <10 seconds per video (10-15x speedup)
