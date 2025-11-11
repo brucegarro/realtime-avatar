@@ -1,0 +1,25 @@
+======================================================================
+PHASE 2: FASTER-WHISPER ASR TEST (CUDA 12)
+======================================================================
+
+🎤 Initializing Faster-Whisper ASR with CUDA 12...
+Using cache found in /root/.cache/torch/hub/snakers4_silero-vad_master
+✅ ASR initialized in 2.46s
+
+🔊 Transcribing: bruce_expressive_motion_21s.mp3
+✅ Transcription complete in 0.86s
+   Audio duration: 24.80s
+   RTF: 0.035x (lower is better)
+   Text:  Okay, so the thing that I really want to communicate to you is that I have the pretty diverse background. I have a lot of I have a lot to offer to your company.  So I have a lot of experience, not ju...
+   🚀 EXCELLENT! Real-time capable (<0.3x RTF)
+
+🔊 Transcribing: bruce_expressive_motion_41s.mp3
+✅ Transcription complete in 0.81s
+   Audio duration: 46.40s
+   RTF: 0.018x (lower is better)
+   Text:  Okay, so the thing that I really want to communicate to you is that I have the pretty diverse background.  I have a lot of, I have a lot to offer to your company.  So I have a lot of experience, not ...
+   🚀 EXCELLENT! Real-time capable (<0.3x RTF)
+
+======================================================================
+TEST COMPLETE - FASTER-WHISPER WITH CUDA 12 WORKING!
+======================================================================

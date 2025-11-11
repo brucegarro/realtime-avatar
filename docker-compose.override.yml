@@ -1,0 +1,10 @@
+# Docker Compose Override for Local Development (M3 Mac - No NVIDIA GPU)
+# This file automatically overrides docker-compose.yml settings when running locally
+# For GCP deployment, rename this file or use: docker-compose -f docker-compose.yml up
+
+services:
+  gpu-service:
+    # Remove GPU device requirements entirely - use CPU/MPS instead
+    deploy: null
+
+
