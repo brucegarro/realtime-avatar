@@ -231,9 +231,9 @@ class ConcurrentVideoGenerator:
             print(f"  🎤 Generating audio for '{job.text[:50]}...'")
             voice_sample = job.voice_sample or self.voice_sample_path
             
-            # TTS returns (audio_path, duration_ms)
+            # TTS returns (audio_path, duration_ms, audio_duration_s)
             temp_audio = f"/tmp/audio_{job.job_id}.wav"
-            audio_path, tts_duration = self.tts_model.synthesize(
+            audio_path, tts_duration, audio_duration_s = self.tts_model.synthesize(
                 text=job.text,
                 language=job.language,
                 speaker_wav=voice_sample,

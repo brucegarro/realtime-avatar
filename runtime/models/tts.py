@@ -129,14 +129,20 @@ class XTTSModel:
             logger.info(f"Synthesizing: lang={lang_code}, text_len={len(text)}, speaker_wav={speaker_wav}")
             
             # Synthesize with XTTS-v2
-            # Note: speaker_wav is used for voice cloning
-            self.model.tts_to_file(
-                text=text,
-                file_path=output_path,
-                speaker_wav=speaker_wav if speaker_wav and os.path.exists(speaker_wav) else None,
-                language=lang_code,
-                split_sentences=True  # Better for longer text
-            )
+            # When using speaker_wav for voice cloning, XTTS checks for speaker param first
+            # We must explicitly pass speaker=None when using speaker_wav
+            if speaker_wav and os.path.exists(speaker_wav):
+                self.model.tts_to_file(
+                    text=text,
+                    file_path=output_path,
+                    speaker=None,
+                    speaker_wav=speaker_wav,
+                    language=lang_code,
+                    split_sentences=True
+                )
+            else:
+                # No voice cloning - would need a speaker name
+                raise ValueError("speaker_wav is required for XTTS voice cloning")
             
             duration_ms = (time.time() - start_time) * 1000
             
