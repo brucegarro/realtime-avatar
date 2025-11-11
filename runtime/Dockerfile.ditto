@@ -128,30 +128,42 @@ RUN pip install --no-cache-dir \
 # Clone Ditto repository
 RUN git clone https://github.com/antgroup/ditto-talkinghead.git /app/ditto-talkinghead
 
-# Download Ditto models
+# Download Ditto models with retry logic
 # Config file
 RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_cfg && \
     cd /app/ditto-talkinghead/checkpoints/ditto_cfg && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/v0.4_hubert_cfg_pytorch.pkl
+    curl -L --retry 3 --retry-delay 2 -o v0.4_hubert_cfg_pytorch.pkl \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/v0.4_hubert_cfg_pytorch.pkl
 
 # PyTorch models
 RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_pytorch/models && \
     cd /app/ditto-talkinghead/checkpoints/ditto_pytorch/models && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/appearance_extractor.pth && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/decoder.pth && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/lmdm_v0.4_hubert.pth && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/motion_extractor.pth && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/stitch_network.pth && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/warp_network.pth
+    curl -L --retry 3 --retry-delay 2 -o appearance_extractor.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/appearance_extractor.pth && \
+    curl -L --retry 3 --retry-delay 2 -o decoder.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/decoder.pth && \
+    curl -L --retry 3 --retry-delay 2 -o lmdm_v0.4_hubert.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/lmdm_v0.4_hubert.pth && \
+    curl -L --retry 3 --retry-delay 2 -o motion_extractor.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/motion_extractor.pth && \
+    curl -L --retry 3 --retry-delay 2 -o stitch_network.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/stitch_network.pth && \
+    curl -L --retry 3 --retry-delay 2 -o warp_network.pth \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/warp_network.pth
 
 # Auxiliary models
 RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_pytorch/aux_models && \
     cd /app/ditto-talkinghead/checkpoints/ditto_pytorch/aux_models && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/2d106det.onnx && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/det_10g.onnx && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/face_landmarker.task && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/hubert_streaming_fix_kv.onnx && \
-    wget -q https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/landmark203.onnx
+    curl -L --retry 3 --retry-delay 2 -o 2d106det.onnx \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/2d106det.onnx && \
+    curl -L --retry 3 --retry-delay 2 -o det_10g.onnx \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/det_10g.onnx && \
+    curl -L --retry 3 --retry-delay 2 -o face_landmarker.task \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/face_landmarker.task && \
+    curl -L --retry 3 --retry-delay 2 -o hubert_streaming_fix_kv.onnx \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/hubert_streaming_fix_kv.onnx && \
+    curl -L --retry 3 --retry-delay 2 -o landmark203.onnx \
+    https://huggingface.co/digital-avatar/ditto-talkinghead/resolve/main/landmark203.onnx
 
 # Copy application code
 COPY . /app/runtime
