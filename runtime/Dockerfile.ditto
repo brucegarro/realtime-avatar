@@ -169,8 +169,16 @@ RUN mkdir -p /app/ditto-talkinghead/checkpoints/ditto_pytorch/aux_models && \
 COPY . /app/runtime
 WORKDIR /app/runtime
 
+# Create optimized Ditto config for faster inference
+RUN python optimize_ditto_config.py || echo "Config optimization skipped (models not downloaded yet)"
+
 # Set Python path to include both runtime and ditto directories
 ENV PYTHONPATH=/app/runtime:/app/ditto-talkinghead:$PYTHONPATH
+
+# Enable PyTorch CUDA optimizations for faster inference
+ENV CUDA_LAUNCH_BLOCKING=0
+ENV TORCH_CUDNN_BENCHMARK=1
+ENV TORCH_ALLOW_TF32=1
 
 # Environment variables
 ENV AVATAR_BACKEND=ditto

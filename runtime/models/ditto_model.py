@@ -43,6 +43,13 @@ class DittoModel:
         start_time = time.time()
         
         try:
+            # Enable PyTorch CUDA optimizations for faster inference
+            if self.device == "cuda" and torch.cuda.is_available():
+                torch.backends.cudnn.benchmark = True
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
+                logger.info("CUDA optimizations enabled (TF32, cuDNN benchmark)")
+            
             # Import here to avoid issues if ditto isn't available
             from stream_pipeline_offline import StreamSDK
             
@@ -50,7 +57,11 @@ class DittoModel:
             if data_root is None:
                 data_root = "./checkpoints/ditto_pytorch"
             if cfg_pkl is None:
-                cfg_pkl = "./checkpoints/ditto_cfg/v0.4_hubert_cfg_pytorch.pkl"
+                # Use fast config if available, fallback to default
+                fast_cfg = "./checkpoints/ditto_cfg/v0.4_hubert_cfg_pytorch_fast.pkl"
+                default_cfg = "./checkpoints/ditto_cfg/v0.4_hubert_cfg_pytorch.pkl"
+                cfg_pkl = fast_cfg if os.path.exists(fast_cfg) else default_cfg
+                logger.info(f"Using config: {os.path.basename(cfg_pkl)}")
                 
             self.data_root = data_root
             self.cfg_pkl = cfg_pkl
