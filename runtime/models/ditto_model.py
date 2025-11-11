@@ -124,23 +124,36 @@ class DittoModel:
             logger.info(f"Generating video from audio: {audio_path}")
             logger.info(f"Reference image: {reference_image_path}")
             
-            # Register avatar (source image)
-            avatar_id = "default"
-            self.sdk.avatar_registrar.register(
-                reference_image_path,
-                avatar_id,
-                crop_scale=crop_scale,
-                crop_vx_ratio=crop_vx_ratio,
-                crop_vy_ratio=crop_vy_ratio
-            )
+            # Setup SDK with source image and output path
+            setup_kwargs = {
+                'crop_scale': crop_scale,
+                'crop_vx_ratio': crop_vx_ratio,
+                'crop_vy_ratio': crop_vy_ratio
+            }
+            self.sdk.setup(reference_image_path, output_path, **setup_kwargs)
             
-            # Process audio and generate video
-            self.sdk.drive_one_avatar(
-                audio_path=audio_path,
-                avatar_id=avatar_id,
-                output_path=output_path,
-                **kwargs
-            )
+            # Load audio and calculate number of frames
+            import librosa
+            import math
+            audio, sr = librosa.core.load(audio_path, sr=16000)
+            num_frames = math.ceil(len(audio) / 16000 * 25)
+            
+            # Setup number of frames
+            fade_in = kwargs.get('fade_in', -1)
+            fade_out = kwargs.get('fade_out', -1)
+            ctrl_info = kwargs.get('ctrl_info', {})
+            self.sdk.setup_Nd(N_d=num_frames, fade_in=fade_in, fade_out=fade_out, ctrl_info=ctrl_info)
+            
+            # Process audio (offline mode)
+            aud_feat = self.sdk.wav2feat.wav2feat(audio)
+            self.sdk.audio2motion_queue.put(aud_feat)
+            self.sdk.close()
+            
+            # Add audio track to video
+            import os
+            tmp_video = self.sdk.tmp_output_path
+            cmd = f'ffmpeg -loglevel error -y -i "{tmp_video}" -i "{audio_path}" -map 0:v -map 1:a -c:v copy -c:a aac "{output_path}"'
+            os.system(cmd)
             
             elapsed = time.time() - start_time
             elapsed_ms = elapsed * 1000  # Convert to milliseconds for consistency
