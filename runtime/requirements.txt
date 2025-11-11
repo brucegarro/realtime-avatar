@@ -4,12 +4,19 @@ uvicorn[standard]==0.27.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 
-# TTS - XTTS-v2
+# TTS - XTTS-v2 and StyleTTS2
 TTS==0.22.0
 torch==2.1.2
 torchaudio==2.1.2
 transformers==4.35.2
 numpy<2.0.0
+
+# StyleTTS2 (fast TTS for real-time)
+phonemizer==3.2.1
+g2p-en==2.1.0
+einops==0.7.0
+munch==4.0.0
+pyyaml==6.0.1
 
 # Avatar animation - LivePortrait
 opencv-python==4.9.0.80
@@ -25,8 +32,9 @@ pydub==0.25.1
 librosa==0.10.1
 soundfile==0.12.1
 
-# ASR dependencies (for future Phase 3) - skip for now due to build issues
-# faster-whisper==1.0.0
+# ASR - Faster-Whisper for real-time speech recognition
+faster-whisper==1.0.3
+ctranslate2==4.0.0
 
 # Language detection
 langdetect==1.0.9

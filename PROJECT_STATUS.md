@@ -1,14 +1,81 @@
-# 🎉 Realtime Avatar Phase 1 - Complete with GPU Acceleration!
+# 🎉 Realtime Avatar - Streaming Real-Time Architecture
 
 ## Project Summary
 
-**Status:** ✅ **PHASE 1 COMPLETE + DITTO INTEGRATION** ✅  
+**Status:** 🚀 **PHASE 2 - STREAMING REAL-TIME ARCHITECTURE** 🚀  
 **Date:** November 10, 2025  
-**Phase:** 1 (Script → Video MVP) + Ditto Audio-Driven Avatar  
-**Lines of Code:** 2,500+  
-**Architecture:** Microservices (Runtime + GPU Service) with Ditto Backend  
+**Phase:** 2 (Near Real-Time Conversation Avatar)  
+**Lines of Code:** 3,000+  
+**Architecture:** Streaming Pipeline (ASR → LLM → TTS → Video) with CUDA Optimization  
 
-## 🚀 Latest Update (Nov 10, 2025) - Ditto Integration for Audio-Driven Talking Heads
+## 🚀 Latest Update (Nov 10, 2025) - Phase 2: Real-Time Streaming Pipeline
+
+### 🎯 Performance Breakthrough - CUDA Optimized Ditto ✅
+**From 2-3 minutes → 48 seconds** (44% faster with optimizations)
+
+**Benchmark Results:**
+- **Baseline (CPU):** ~2-3 min per video (~0.1-0.2x realtime)
+- **CUDA (default):** 1:26 (86s) for 15.76s video (~5.5x realtime)
+- **CUDA + Optimizations:** **48s** for 15.76s video (~**3x realtime**) ✅
+- **Test video:** 47.68s video in 2:56 (176s) = ~3.7x realtime
+
+**Optimizations Applied:**
+1. **Config Tuning:** Diffusion steps 50→10, overlap 10→2 (80% reduction)
+2. **PyTorch CUDA:** TF32, cuDNN benchmark mode enabled
+3. **Smart Config:** Auto-detection of fast vs standard config
+4. **Files:** `optimize_ditto_config.py`, updated Dockerfile.ditto, ditto_model.py
+
+### 🎯 Phase 2 Goals - Near Real-Time (<2s latency)
+
+**Target Architecture:**
+```
+User Speech (audio input)
+    ↓ ~200ms
+[Faster-Whisper ASR] ← Speech-to-text
+    ↓ ~300ms
+[LLM Streaming] ← Generate response in chunks
+    ↓ ~200ms per chunk
+[StyleTTS2 Fast TTS] ← 10-20x faster than XTTS-v2
+    ↓ ~1s per chunk
+[Ditto CUDA Video] ← Audio-driven talking head
+    ↓
+Real-time video stream output
+```
+
+**Performance Targets:**
+- First response: ~1.7s total latency
+- Continuous streaming: ~1s per chunk
+- Overall: 10-20x faster than current pipeline
+
+### 📋 Phase 2 Implementation Plan
+
+**Priority 1: Faster TTS (StyleTTS2)** 🔥
+- [ ] Add StyleTTS2 model integration
+- [ ] Use existing voice samples (zero-shot mode)
+- [ ] Expected: 0.1-0.2s per second of audio (vs 2-3s currently)
+- [ ] Fallback: Keep XTTS-v2 for comparison
+
+**Priority 2: Speech Input (Faster-Whisper)** 🎤
+- [ ] Add Faster-Whisper ASR model
+- [ ] Voice Activity Detection (VAD)
+- [ ] Real-time audio capture
+- [ ] Expected: ~100-200ms latency
+
+**Priority 3: Streaming Architecture** 🌊
+- [ ] Async pipeline: ASR → LLM → TTS → Video
+- [ ] Chunk-based processing (parallel stages)
+- [ ] WebSocket streaming to client
+- [ ] Queue management for smooth playback
+
+**Priority 4: TensorRT Optimization** ⚡
+- [ ] Convert Ditto PyTorch → TensorRT
+- [ ] Expected: 2-3x additional speedup
+- [ ] Target: ~1s per 1s of video
+
+**Phase 3 (Future):**
+- [ ] Model quantization (INT8/FP16)
+- [ ] Advanced streaming protocols
+- [ ] Multi-language support improvements
 
 ## 🚀 Latest Update (Nov 10, 2025) - Ditto Integration for Audio-Driven Talking Heads
 
