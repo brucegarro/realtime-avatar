@@ -118,10 +118,8 @@ class ConcurrentVideoGenerator:
         self.tts_model = XTTSModel()
         self.tts_model.initialize()
         
-        # Load shared ASR model (0.4GB)
-        print("  - Loading Faster-Whisper ASR model...")
-        self.asr_model = ASRModel(device=self.device)
-        self.asr_model.initialize()
+        # ASR not needed for our pipeline (TTS generates audio, Ditto uses it)
+        # Removing ASR to avoid initialization hang issue
         
         # Create per-worker Ditto instances (2.4GB each)
         print(f"  - Creating {self.num_workers} Ditto instances...")
