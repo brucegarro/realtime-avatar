@@ -711,3 +711,29 @@ TensorRT 8.6.1 installation failed in current container:
 **Impact:**
 This could be the breakthrough to real-time performance. Just need to resolve TensorRT installation to test.
 
+
+**Update (Nov 14, 2025 - Evening Session):**
+
+**TensorRT Installation Complexity:**
+The official TensorRT engines exist and are downloaded (2GB successfully), but installing the TensorRT Python bindings (v8.6.1) in the current container proved difficult:
+
+1. **tensorrt-libs**: ✅ Successfully installed (825MB wheel)
+2. **tensorrt**: ❌ Failed - Complex build dependencies, requires `/usr/bin/python3 -m pip` which doesn't exist in build environment
+3. **Root cause**: TensorRT 8.6.1's Python package has build-time dependencies that conflict with container's pip setup
+
+**What's Needed:**
+- Build new Docker image FROM nvidia/tensorrt:22.12-py3 (has TRT 8.5.x pre-installed)
+- OR use TensorRT 10.x containers (CUDA 12.x compatible)
+- Ditto code already supports loading .engine files, just needs Python bindings to instantiate TRT runtime
+
+**Alternative Approach:**
+Given TensorRT installation complexity, consider:
+1. **Docker rebuild** (cleaner, 1-2 hours)
+2. **Test Wav2Lip** (already works, ~1.0x RTF, lower quality but proven)
+3. **Optimize Wav2Lip** (may be easier path to real-time)
+
+**Current Status:**
+- TensorRT engines: ✅ Downloaded and ready (ditto_trt_Ampere_Plus/)
+- TensorRT Python: ❌ Not installed
+- Instance: Ready to rebuild with proper base image
+
