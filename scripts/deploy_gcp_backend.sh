@@ -53,6 +53,18 @@ if [ "$INSTANCE_STATUS" != "RUNNING" ]; then
     sleep 30
 fi
 
+echo "Creating directory structure on instance..."
+echo ""
+
+# Create directory structure
+gcloud compute ssh "$INSTANCE_NAME" --zone="$ZONE" --command='
+  mkdir -p ~/realtime-avatar/runtime/pipelines
+  mkdir -p ~/realtime-avatar/runtime/models
+  mkdir -p ~/realtime-avatar/runtime/utils
+  mkdir -p ~/realtime-avatar/runtime/workers
+  mkdir -p ~/realtime-avatar/web
+'
+
 echo "Uploading Phase 4 files to instance..."
 echo ""
 
