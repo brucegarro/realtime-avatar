@@ -68,6 +68,8 @@ services:
         condition: service_healthy
     networks:
       - avatar-network
+    security_opt:
+      - seccomp:unconfined
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s

@@ -4,7 +4,7 @@ services:
   # Web UI - Runs locally, connects to remote GCP backend
   web:
     build:
-      context: ./web
+      context: .
       dockerfile: Dockerfile
     container_name: realtime-avatar-web
     ports:

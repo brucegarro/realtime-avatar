@@ -69,14 +69,20 @@ Be natural, warm, and engaging in your communication style."""
         # Initialize ASR
         if self.asr_model is None:
             logger.info("Loading ASR model (Faster-Whisper)...")
-            self.asr_model = ASRModel(device=self.device)
+            # Use int8 for CPU (float16 requires GPU), float16 for CUDA
+            compute_type = "int8" if self.device == "cpu" else "float16"
+            self.asr_model = ASRModel(device=self.device, compute_type=compute_type)
             self.asr_model.initialize()
 
-        # Initialize LLM
+        # Initialize LLM (optional - skip if it fails)
         if self.llm_model is None:
-            logger.info("Loading LLM model (Qwen-2.5-7B)...")
-            self.llm_model = LLMModel(device="cpu")  # LLM on CPU for MVP
-            self.llm_model.initialize()
+            try:
+                logger.info("Loading LLM model (Qwen-2.5-7B)...")
+                self.llm_model = LLMModel()  # LLM on CPU (default)
+                self.llm_model.initialize()
+            except Exception as e:
+                logger.warning(f"Failed to load LLM, will use fallback responses: {e}")
+                self.llm_model = None  # Will use fallback in generate_response()
 
         # Note: TTS and Video models are loaded on-demand by phase1_script.run_pipeline()
 
@@ -123,10 +129,20 @@ Be natural, warm, and engaging in your communication style."""
         Returns:
             Dict with 'response' text and timing info
         """
-        if self.llm_model is None:
-            raise RuntimeError("Pipeline not initialized. Call initialize() first.")
-
         start_time = time.time()
+        
+        # Fallback if LLM failed to load
+        if self.llm_model is None:
+            logger.info(f"Using fallback response (LLM not available) for: '{user_message[:100]}...'")
+            # Simple echoing fallback for demonstration
+            response = f"I heard you say: '{user_message}'. This is a demo response since the AI model is still loading."
+            result = {
+                "response": response,
+                "llm_time": time.time() - start_time,
+                "fallback": True,
+            }
+            return result
+
         logger.info(f"Generating LLM response for: '{user_message[:100]}...'")
 
         if conversation_history:

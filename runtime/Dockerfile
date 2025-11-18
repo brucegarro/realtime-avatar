@@ -77,6 +77,10 @@ RUN pip install --no-cache-dir ffmpeg-python==0.2.0 pydub==0.25.1 librosa==0.10.
 # Utilities
 RUN pip install --no-cache-dir langdetect==1.0.9 python-multipart==0.0.6 aiofiles==23.2.1 httpx==0.26.0
 
+# ASR - Faster-Whisper for Phase 4 conversation
+# Using ctranslate2 >= 4.6.0 which should have executable stack issue fixed
+RUN pip install --no-cache-dir faster-whisper==1.0.3 ctranslate2>=4.6.0
+
 # Copy application code
 COPY . .
 
