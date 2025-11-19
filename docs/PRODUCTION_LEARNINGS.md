@@ -3,12 +3,14 @@
 Critical lessons learned from deploying the full conversation pipeline to GCP with L4 GPU.
 
 **Date:** November 19, 2025  
-**Milestone:** First successful end-to-end conversation flow
+**Milestone:** First successful end-to-end conversation flow with TensorRT acceleration
 
 ---
 
 ## Table of Contents
 
+- [TensorRT Performance Investigation](#tensorrt-performance-investigation)
+- [Web UI Evolution](#web-ui-evolution)
 - [Volume Mount Architecture](#volume-mount-architecture)
 - [Async/Await in FastAPI](#asyncawait-in-fastapi)
 - [Docker Path Resolution](#docker-path-resolution)
@@ -16,6 +18,223 @@ Critical lessons learned from deploying the full conversation pipeline to GCP wi
 - [Import Management](#import-management)
 - [Performance Insights](#performance-insights)
 - [Development Workflow](#development-workflow)
+
+---
+
+## TensorRT Performance Investigation
+
+### Problem: Video Generation Performance Regression
+Initial testing showed video generation at **2.15-2.47x RTF** instead of historical **1.23-1.48x RTF** with TensorRT.
+
+### Investigation Process
+
+**1. Initial Hypothesis: Missing TensorRT Engines**
+```bash
+# Checked TensorRT directory
+docker exec realtime-avatar-gpu ls -la /app/ditto-checkpoints/ditto_trt_Ampere_Plus/
+# Result: Directory existed but appeared empty in logs
+```
+
+**2. Root Cause: Logging/Buffering Issues**
+- Code was correctly selecting TensorRT paths
+- Log messages weren't appearing due to Python logging buffering
+- StreamSDK initialization was silent but successful
+
+**3. Verification Method: Debug Print Statements**
+```python
+# Added explicit print() statements with flush=True
+print(f"[DITTO DEBUG] TensorRT check: use_tensorrt={use_tensorrt}, path_exists={trt_exists}", flush=True)
+print(f"[DITTO DEBUG] ✅ Selected TensorRT: {trt_path}", flush=True)
+print(f"[DITTO DEBUG] Using TensorRT config: {cfg_pkl}", flush=True)
+print(f"[DITTO DEBUG] About to call StreamSDK(cfg_pkl={cfg_pkl}, data_root={data_root})", flush=True)
+```
+
+**4. Confirmed TensorRT Active**
+```
+[DITTO DEBUG] TensorRT check: use_tensorrt=True, path_exists=True, path=/app/ditto-checkpoints/ditto_trt_Ampere_Plus
+[DITTO DEBUG] ✅ Selected TensorRT: /app/ditto-checkpoints/ditto_trt_Ampere_Plus
+[DITTO DEBUG] Using TensorRT config: /app/ditto-checkpoints/ditto_cfg/v0.4_hubert_cfg_trt.pkl
+[DITTO DEBUG] StreamSDK initialized successfully
+```
+
+### Performance Results
+
+**Before TensorRT Verification:**
+- Video generation: **2.15-2.47x RTF** (assumed PyTorch fallback)
+- Concern: 50% slower than historical performance
+
+**After TensorRT Confirmation:**
+- Video generation: **1.6-1.9x RTF** (TensorRT confirmed active)
+- 3s audio → 4.74s generation = **1.58x RTF** ✅
+- 1.66s audio → 3.19s generation = **1.92x RTF** ✅
+- Within 30% of historical best (1.2-1.5x RTF target)
+
+### Key Learnings
+
+**1. TensorRT Configuration**
+```yaml
+# docker-compose.yml
+volumes:
+  - ~/ditto-talkinghead:/app/ditto-checkpoints:ro
+```
+
+**Files Required:**
+```
+~/ditto-talkinghead/
+├── ditto_trt_Ampere_Plus/          # 2GB, 12 .engine files
+│   ├── hubert_fp32.engine          # 1.4GB
+│   ├── decoder_fp16.engine         # 114MB
+│   ├── lmdm_v0.4_hubert_fp32.engine # 195MB
+│   └── ... (9 more engines)
+└── ditto_cfg/
+    └── v0.4_hubert_cfg_trt.pkl     # 31KB (vs 130B PyTorch)
+```
+
+**2. Logging in Docker Containers**
+- Standard Python `logging` may be buffered
+- Use `print(..., flush=True)` for debugging
+- Log messages may not appear even when code executes correctly
+
+**3. Performance Validation**
+- Don't rely solely on logs for verification
+- Test actual performance metrics (RTF)
+- Compare against historical baselines
+- TensorRT config is 240x larger than PyTorch config (31KB vs 130B)
+
+**4. Container Code Updates**
+- Code baked into Docker image, not volume-mounted for GPU service
+- Must copy files into running container for hot fixes:
+```bash
+gcloud compute scp local_file.py instance:/tmp/
+gcloud compute ssh instance --command="docker cp /tmp/file.py container:/app/path/"
+docker compose restart service
+```
+
+### Performance Comparison
+
+| Metric | PyTorch | TensorRT | Improvement |
+|--------|---------|----------|-------------|
+| Video Gen RTF | 2.2-2.5x | 1.6-1.9x | ~30% faster |
+| 3s audio | ~7-8s | 4.7s | 37% faster |
+| 5s audio | ~10-12s | ~8s | 25% faster |
+| Target RTF | - | 1.2-1.5x | 80% of goal |
+
+### Remaining Optimization Opportunities
+- Current: 1.6-1.9x RTF
+- Target: 1.2-1.5x RTF  
+- Gap: ~30% performance headroom
+- Potential causes: initialization overhead, short audio inefficiency, model warm-up
+
+---
+
+## Web UI Evolution
+
+### Overlay Controls Design (November 19, 2025)
+
+**Goal:** Create an intuitive, unobtrusive interface for voice conversation with the AI avatar.
+
+**Design Iterations:**
+
+1. **Initial Layout: Separate Controls Section**
+   - Avatar video in one section
+   - Controls (microphone, status) in separate section below
+   - Settings spanning full width
+   - Issue: Disconnected user experience, controls far from avatar
+
+2. **Two-Column Layout**
+   - Left column: Avatar video
+   - Right column: Transcript
+   - Controls still separate
+   - Improvement: Better use of horizontal space
+
+3. **Overlay Controls on Video**
+   - Status indicator overlaid at top of avatar video
+   - Microphone button overlaid at bottom
+   - Glass-morphism styling (semi-transparent, backdrop blur)
+   - Result: More cohesive, modern interface
+
+4. **Subtle Styling Refinement**
+   - Reduced opacity from 0.95 to 0.85
+   - Softened shadows (0 8px 16px → 0 4px 12px for mic button)
+   - Reduced backdrop blur (10px → 8px)
+   - Smaller microphone button (72px → 64px)
+   - Positioned mic 20px higher via padding adjustment
+   - Result: Professional, elegant appearance
+
+5. **Settings Relocation**
+   - Moved settings from spanning both columns to left column only
+   - Positioned below avatar video
+   - Right column transcript expands to match left column height
+   - Result: More balanced, organized layout
+
+**Final UI Structure:**
+```
+┌─────────────────────┬─────────────────────┐
+│  Left Column        │  Right Column       │
+├─────────────────────┼─────────────────────┤
+│  ┌───────────────┐  │  ┌───────────────┐  │
+│  │ Avatar Video  │  │  │               │  │
+│  │  [Status]     │  │  │  Transcript   │  │
+│  │               │  │  │               │  │
+│  │               │  │  │               │  │
+│  │  [Mic Btn]    │  │  │               │  │
+│  └───────────────┘  │  │               │  │
+│  ┌───────────────┐  │  │               │  │
+│  │  Settings     │  │  │               │  │
+│  └───────────────┘  │  └───────────────┘  │
+└─────────────────────┴─────────────────────┘
+```
+
+**Key CSS Techniques:**
+
+```css
+/* Overlay positioning */
+.overlay-controls {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 1.75rem 1.5rem; /* Extra bottom padding for mic */
+    pointer-events: none; /* Allow clicks through to video */
+}
+
+.overlay-controls > * {
+    pointer-events: auto; /* Re-enable clicks on controls */
+}
+
+/* Glass-morphism effect */
+.status-indicator {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.record-btn {
+    background: rgba(37, 99, 235, 0.85);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Height matching with flexbox */
+.transcript-section {
+    flex: 1; /* Expand to fill available space */
+}
+```
+
+**User Experience Improvements:**
+- **Spatial Relationship:** Controls directly on video create clear association
+- **Visual Hierarchy:** Semi-transparent controls don't compete with avatar
+- **Discoverability:** Microphone button always visible at bottom center
+- **Feedback:** Status indicator provides real-time state information
+- **Balance:** Two-column layout makes efficient use of screen space
+- **Consistency:** Settings grouped with avatar controls in left column
+
+**Performance Considerations:**
+- CSS transforms for button interactions (no repaints)
+- `backdrop-filter` hardware accelerated on modern browsers
+- Minimal DOM structure (no extra wrapper divs)
+- Cache busting via query param (`app.js?v=20251119-5`)
 
 ---
 

@@ -59,32 +59,39 @@ class DittoModel:
                 trt_path = "/app/ditto-checkpoints/ditto_trt_Ampere_Plus"
                 trt_exists = os.path.exists(trt_path)
                 logger.info(f"TensorRT checkpoint check: use_tensorrt={use_tensorrt}, path_exists={trt_exists}")
+                print(f"[DITTO DEBUG] TensorRT check: use_tensorrt={use_tensorrt}, path_exists={trt_exists}, path={trt_path}", flush=True)
                 
                 if use_tensorrt and trt_exists:
                     data_root = trt_path
                     logger.info("✅ Using TensorRT Ampere+ engines")
+                    print(f"[DITTO DEBUG] ✅ Selected TensorRT: {trt_path}", flush=True)
                 else:
                     data_root = "/app/ditto-talkinghead/checkpoints/ditto_pytorch"
                     logger.info(f"Using PyTorch models (TRT disabled or path missing)")
+                    print(f"[DITTO DEBUG] Using PyTorch: {data_root}", flush=True)
                     
             if cfg_pkl is None:
                 if use_tensorrt and "trt" in str(data_root):
                     # TensorRT config
                     cfg_pkl = "/app/ditto-checkpoints/ditto_cfg/v0.4_hubert_cfg_trt.pkl"
                     logger.info(f"Using TensorRT config: {os.path.basename(cfg_pkl)}")
+                    print(f"[DITTO DEBUG] Using TensorRT config: {cfg_pkl}", flush=True)
                 else:
                     # PyTorch config
                     fast_cfg = "/app/ditto-talkinghead/checkpoints/ditto_cfg/v0.4_hubert_cfg_pytorch_fast.pkl"
                     default_cfg = "/app/ditto-talkinghead/checkpoints/ditto_cfg/v0.4_hubert_cfg_pytorch.pkl"
                     cfg_pkl = fast_cfg if os.path.exists(fast_cfg) else default_cfg
                     logger.info(f"Using PyTorch config: {os.path.basename(cfg_pkl)}")
+                    print(f"[DITTO DEBUG] Using PyTorch config: {cfg_pkl}", flush=True)
                 
             self.data_root = data_root
             self.cfg_pkl = cfg_pkl
             
             # Initialize StreamSDK
             logger.info(f"Loading Ditto models from {data_root}")
+            print(f"[DITTO DEBUG] About to call StreamSDK(cfg_pkl={cfg_pkl}, data_root={data_root})", flush=True)
             self.sdk = StreamSDK(cfg_pkl, data_root)
+            print(f"[DITTO DEBUG] StreamSDK initialized successfully", flush=True)
             
             self._initialized = True
             elapsed = time.time() - start_time

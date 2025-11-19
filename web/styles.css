@@ -58,32 +58,29 @@ header h1 {
 
 /* Main Content */
 main {
+    width: 100%;
+}
+
+.main-layout {
     display: grid;
     gap: 2rem;
     grid-template-columns: 1fr;
 }
 
 @media (min-width: 768px) {
-    main {
+    .main-layout {
         grid-template-columns: 1fr 1fr;
     }
     
-    .avatar-section {
-        grid-column: 1;
-        grid-row: 1 / 3;
+    .left-column {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
     }
     
-    .transcript-section {
-        grid-column: 2;
-        grid-row: 1 / 3;
-    }
-    
-    .controls-section {
-        grid-column: 1 / 3;
-    }
-    
-    .settings-section {
-        grid-column: 1 / 3;
+    .right-column {
+        display: flex;
+        flex-direction: column;
     }
 }
 
@@ -102,6 +99,23 @@ main {
     background: #000;
     border-radius: 0.75rem;
     overflow: hidden;
+}
+
+/* Overlay Controls */
+.overlay-controls {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1.5rem 1.75rem 1.5rem;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.overlay-controls > * {
+    pointer-events: auto;
 }
 
 #avatarVideo {
@@ -143,13 +157,14 @@ main {
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
+    flex: 1;
 }
 
 .transcript-box {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 500px;
+    min-height: 600px;
 }
 
 .transcript-header {
@@ -236,40 +251,35 @@ main {
     border-left-color: var(--success-color);
 }
 
-/* Controls Section */
-.controls-section {
-    background: var(--surface-color);
-    border-radius: 1rem;
-    padding: 2rem;
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-}
-
+/* Controls Section - Now Overlay */
 .recording-controls {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
 }
 
 .record-btn {
-    width: 80px;
-    height: 80px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     border: none;
-    background: var(--primary-color);
+    background: rgba(37, 99, 235, 0.85);
     color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
 }
 
 .record-btn:hover {
-    background: var(--primary-hover);
+    background: rgba(29, 78, 216, 0.9);
     transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .record-btn:active {
@@ -277,7 +287,7 @@ main {
 }
 
 .record-btn.recording {
-    background: var(--error-color);
+    background: rgba(239, 68, 68, 0.85);
     animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -290,17 +300,18 @@ main {
     }
 }
 
-.recording-hint {
-    margin-top: 1rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
 /* Status Indicator */
 .status-indicator {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 0.875rem;
     padding: 0.75rem 1.5rem;
     background: var(--bg-color);
     border-radius: 2rem;

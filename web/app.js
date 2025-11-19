@@ -16,7 +16,6 @@ let isProcessing = false;
 // DOM Elements
 const recordBtn = document.getElementById('recordBtn');
 const statusIndicator = document.getElementById('statusIndicator');
-const recordingHint = document.getElementById('recordingHint');
 const transcript = document.getElementById('transcript');
 const avatarVideo = document.getElementById('avatarVideo');
 const videoSource = document.getElementById('videoSource');
@@ -112,7 +111,6 @@ async function startRecording() {
         
         // Update UI
         recordBtn.classList.add('recording');
-        recordingHint.textContent = 'Click to stop recording';
         updateStatus('🎙️ Listening', 'recording');
         
     } catch (error) {
@@ -131,7 +129,6 @@ function stopRecording() {
     
     // Update UI
     recordBtn.classList.remove('recording');
-    recordingHint.textContent = 'Click to record';
 }
 
 // Process Recording

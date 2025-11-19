@@ -27,3 +27,4 @@ httpx==0.26.0
 # Utils
 python-multipart==0.0.6
 aiofiles==23.2.1
+bangla

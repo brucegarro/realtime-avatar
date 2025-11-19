@@ -14,89 +14,98 @@
         </header>
 
         <main>
-            <!-- Avatar Video Display -->
-            <section class="avatar-section">
-                <div class="video-container">
-                    <video id="avatarVideo" controls playsinline>
-                        <source id="videoSource" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                    <div class="video-placeholder" id="videoPlaceholder">
-                        <div class="placeholder-content">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            <p>Click the microphone to start</p>
+            <div class="main-layout">
+                <!-- Left Column: Avatar Video with Overlay Controls -->
+                <div class="left-column">
+                    <!-- Avatar Video Display -->
+                    <section class="avatar-section">
+                        <div class="video-container">
+                            <video id="avatarVideo" controls playsinline>
+                                <source id="videoSource" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                            <div class="video-placeholder" id="videoPlaceholder">
+                                <div class="placeholder-content">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <p>Click the microphone to start</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Overlay Controls -->
+                            <div class="overlay-controls">
+                                <!-- Status Indicator (Top) -->
+                                <div class="status-indicator" id="statusIndicator">
+                                    <span class="status-dot"></span>
+                                    <span class="status-text">Ready</span>
+                                </div>
+                                
+                                <!-- Microphone Button (Bottom) -->
+                                <div class="recording-controls">
+                                    <button id="recordBtn" class="record-btn" title="Click to record">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </section>
+                    </section>
 
-            <!-- Transcript Display -->
-            <section class="transcript-section">
-                <div class="transcript-box">
-                    <div class="transcript-header">
-                        <h3>Conversation</h3>
-                        <button id="clearBtn" class="clear-btn">Clear</button>
-                    </div>
-                    <div id="transcript" class="transcript-content">
-                        <p class="empty-state">Your conversation will appear here...</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Voice Input Controls -->
-            <section class="controls-section">
-                <div class="recording-controls">
-                    <button id="recordBtn" class="record-btn" title="Click to record">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                            <line x1="12" y1="19" x2="12" y2="23"></line>
-                            <line x1="8" y1="23" x2="16" y2="23"></line>
-                        </svg>
-                    </button>
-                    <p class="recording-hint" id="recordingHint">Click to record</p>
+                    <!-- Settings (Optional) -->
+                    <section class="settings-section">
+                        <details>
+                            <summary>⚙️ Settings</summary>
+                            <div class="settings-content">
+                                <label>
+                                    <span>Language:</span>
+                                    <select id="languageSelect">
+                                        <option value="en" selected>English</option>
+                                        <option value="zh">中文 (Chinese)</option>
+                                        <option value="es">Español (Spanish)</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="autoPlayCheckbox" checked>
+                                    Auto-play avatar response
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="saveHistoryCheckbox">
+                                    Save conversation history
+                                </label>
+                            </div>
+                        </details>
+                    </section>
                 </div>
 
-                <div class="status-indicator" id="statusIndicator">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Ready</span>
+                <!-- Right Column: Transcript -->
+                <div class="right-column">
+                    <!-- Transcript Display -->
+                    <section class="transcript-section">
+                        <div class="transcript-box">
+                            <div class="transcript-header">
+                                <h3>Conversation</h3>
+                                <button id="clearBtn" class="clear-btn">Clear</button>
+                            </div>
+                            <div id="transcript" class="transcript-content">
+                                <p class="empty-state">Your conversation will appear here...</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-            </section>
-
-            <!-- Settings (Optional) -->
-            <section class="settings-section">
-                <details>
-                    <summary>⚙️ Settings</summary>
-                    <div class="settings-content">
-                        <label>
-                            <span>Language:</span>
-                            <select id="languageSelect">
-                                <option value="en" selected>English</option>
-                                <option value="zh">中文 (Chinese)</option>
-                                <option value="es">Español (Spanish)</option>
-                            </select>
-                        </label>
-                        <label>
-                            <input type="checkbox" id="autoPlayCheckbox" checked>
-                            Auto-play avatar response
-                        </label>
-                        <label>
-                            <input type="checkbox" id="saveHistoryCheckbox">
-                            Save conversation history
-                        </label>
-                    </div>
-                </details>
-            </section>
+            </div>
         </main>
 
         <footer>
-            <p>Phase 4: Interactive Voice Conversation • 2x RTF Generation</p>
+            <p>Phase 4: Interactive Voice Conversation • TensorRT 1.6-1.9x RTF</p>
         </footer>
     </div>
 
-    <script src="app.js?v=20251119"></script>
+    <script src="app.js?v=20251119-5"></script>
 </body>
 </html>
