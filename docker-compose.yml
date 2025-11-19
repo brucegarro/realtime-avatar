@@ -51,6 +51,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # Mount source code for hot reload (dev mode) - writable for model downloads
+      - ./runtime:/app/runtime
       # Share assets
       - ./runtime/assets:/app/assets:ro
       # Shared output with GPU service

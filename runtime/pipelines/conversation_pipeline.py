@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 import time
+import asyncio
 
 from models.asr import ASRModel
 from models.llm import LLMModel
@@ -106,8 +107,33 @@ Be natural, warm, and engaging in your communication style."""
         start_time = time.time()
         logger.info(f"Transcribing audio: {audio_path}")
 
-        result = self.asr_model.transcribe(audio_path, language=language)
-        result["transcribe_time"] = time.time() - start_time
+        # ASR model returns (text, language, confidence) tuple
+        transcribe_result = self.asr_model.transcribe(audio_path, language=language)
+        
+        # Handle both tuple formats: (text, language, confidence) or (text, metadata)
+        if isinstance(transcribe_result, tuple):
+            if len(transcribe_result) == 3:
+                # Simple format: (text, language, confidence)
+                text, detected_lang, confidence = transcribe_result
+                metadata = {
+                    "language": detected_lang,
+                    "language_probability": confidence
+                }
+            elif len(transcribe_result) == 2:
+                # Detailed format: (text, metadata_dict)
+                text, metadata = transcribe_result
+            else:
+                raise ValueError(f"Unexpected transcribe result format: {len(transcribe_result)} values")
+        else:
+            raise TypeError(f"Expected tuple from ASR transcribe, got {type(transcribe_result)}")
+        
+        # Build result dict
+        result = {
+            "text": text,
+            "language": metadata.get("language", language),
+            "transcribe_time": time.time() - start_time,
+            "metadata": metadata
+        }
 
         logger.info(f"Transcription: '{result['text'][:100]}...' ({result['transcribe_time']:.2f}s)")
         return result
@@ -166,7 +192,7 @@ Be natural, warm, and engaging in your communication style."""
         logger.info(f"LLM response: '{response[:100]}...' ({result['llm_time']:.2f}s)")
         return result
 
-    def generate_avatar_video(
+    async def generate_avatar_video(
         self,
         text: str,
         output_name: str,
@@ -188,19 +214,16 @@ Be natural, warm, and engaging in your communication style."""
 
         # Initialize Phase1Pipeline if needed
         if self.phase1_pipeline is None:
-            self.phase1_pipeline = Phase1Pipeline(device=self.device)
+            self.phase1_pipeline = Phase1Pipeline()
             self.phase1_pipeline.initialize()
 
-        # Use phase1_script pipeline (TTS + Video)
-        output_dir = str(self.output_dir / output_name)
-        
-        result = self.phase1_pipeline.run(
+        # Use phase1_script pipeline (TTS + Video) - it's async
+        result = await self.phase1_pipeline.generate(
             text=text,
-            reference_image=self.reference_image,
-            reference_audio=self.reference_audio,
-            output_dir=output_dir,
             language=language,
-            use_tensorrt=self.use_tensorrt,
+            reference_image=self.reference_image,
+            voice_sample=self.reference_audio,
+            job_id=output_name,
         )
 
         result["total_generation_time"] = time.time() - start_time
@@ -208,7 +231,7 @@ Be natural, warm, and engaging in your communication style."""
 
         return result
 
-    def process_conversation(
+    async def process_conversation(
         self,
         audio_path: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
@@ -231,7 +254,7 @@ Be natural, warm, and engaging in your communication style."""
             - avatar_video: Video generation result
             - total_time: End-to-end time
         """
-        if self.asr_model is None or self.llm_model is None:
+        if self.asr_model is None:
             raise RuntimeError("Pipeline not initialized. Call initialize() first.")
 
         pipeline_start = time.time()
@@ -252,7 +275,7 @@ Be natural, warm, and engaging in your communication style."""
         if output_name is None:
             output_name = f"conversation_{int(time.time())}"
 
-        avatar_result = self.generate_avatar_video(
+        avatar_result = await self.generate_avatar_video(
             text=response_text,
             output_name=output_name,
             language=language,

@@ -81,8 +81,8 @@ RUN pip install --no-cache-dir langdetect==1.0.9 python-multipart==0.0.6 aiofile
 # Using ctranslate2 >= 4.6.0 which should have executable stack issue fixed
 RUN pip install --no-cache-dir faster-whisper==1.0.3 ctranslate2>=4.6.0
 
-# Copy application code
-COPY . .
+# Create runtime directory structure (code will come from volume mount)
+RUN mkdir -p /app/runtime/models /app/runtime/pipelines /app/runtime/utils /app/runtime/workers
 
 # Create cache directories
 RUN mkdir -p /root/.cache/tts_models /root/.cache/liveportrait /tmp/rt-avatar-output
@@ -91,6 +91,9 @@ RUN mkdir -p /root/.cache/tts_models /root/.cache/liveportrait /tmp/rt-avatar-ou
 ENV PYTHONUNBUFFERED=1
 ENV MODE=local
 ENV DEVICE=cpu
+ENV PYTHONPATH=/app/runtime
+
+WORKDIR /app/runtime
 
 EXPOSE 8000
 

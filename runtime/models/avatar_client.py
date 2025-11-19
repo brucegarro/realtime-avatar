@@ -79,20 +79,9 @@ class AvatarClient:
         start_time = time.time()
         
         try:
-            # Map Docker paths to host paths for GPU service
-            # Docker: /app/ -> Host: /Users/brucegarro/project/realtime-avatar/
-            # Docker: /tmp/gpu-service-output -> Host: /tmp/gpu-service-output (shared)
-            
-            host_audio_path = audio_path
-            host_image_path = reference_image_path
-            
-            if audio_path.startswith("/app/"):
-                host_audio_path = audio_path.replace("/app/", "/Users/brucegarro/project/realtime-avatar/")
-                logger.info(f"Mapped audio_path to host: {host_audio_path}")
-            
-            if reference_image_path.startswith("/app/"):
-                host_image_path = reference_image_path.replace("/app/", "/Users/brucegarro/project/realtime-avatar/")
-                logger.info(f"Mapped image_path to host: {host_image_path}")
+            # Both GPU service and runtime use Docker paths
+            # No mapping needed - both containers share /app/assets mount
+            logger.info(f"Requesting avatar video: audio={audio_path}, image={reference_image_path}")
             
             # Generate output path if not provided
             if not output_path:
@@ -102,12 +91,10 @@ class AvatarClient:
                     f"avatar_output_{int(time.time() * 1000)}.mp4"
                 )
             
-            logger.info(f"Requesting avatar video: audio={audio_path}, image={reference_image_path}")
-            
             # Call GPU service
             payload = {
-                "audio_path": host_audio_path,
-                "reference_image": host_image_path,
+                "audio_path": audio_path,
+                "reference_image": reference_image_path,
                 "mode": "sadtalker",
                 "enhancer": enhancer
             }
@@ -127,19 +114,10 @@ class AvatarClient:
             # Get the video file from GPU service
             remote_video_path = result.get("video_path")
             
-            # Copy file from GPU service output to Docker output
-            # Note: Both GPU service and Docker share /tmp/gpu-service-output
-            if remote_video_path != output_path:
-                # Check if we can access the file directly
-                if os.path.exists(remote_video_path):
-                    # File accessible - probably on same filesystem
-                    import shutil
-                    shutil.copy2(remote_video_path, output_path)
-                    logger.info(f"Copied video from {remote_video_path} to {output_path}")
-                else:
-                    # File not directly accessible - use remote path
-                    logger.info(f"Using remote video path: {remote_video_path}")
-                    output_path = remote_video_path
+            # Both containers share /tmp/gpu-service-output volume (read-only for runtime)
+            # Use the GPU service output path directly instead of copying
+            output_path = remote_video_path
+            logger.info(f"Using video path from GPU service: {output_path}")
             
             total_time_ms = (time.time() - start_time) * 1000
             

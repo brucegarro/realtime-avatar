@@ -166,7 +166,6 @@ class DittoModel:
             self.sdk.close()
             
             # Add audio track to video
-            import os
             tmp_video = self.sdk.tmp_output_path
             cmd = f'ffmpeg -loglevel error -y -i "{tmp_video}" -i "{audio_path}" -map 0:v -map 1:a -c:v copy -c:a aac "{output_path}"'
             os.system(cmd)

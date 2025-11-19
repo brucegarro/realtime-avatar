@@ -68,8 +68,8 @@ async def startup_event():
     # Initialize Phase 4 conversation pipeline
     try:
         conversation_pipeline = ConversationPipeline(
-            reference_image="assets/images/bruce_haircut_cropped.jpg",
-            reference_audio="assets/voice/reference_samples/bruce_en_sample.wav",
+            reference_image="bruce_haircut_small.jpg",  # Just filename, Phase1Pipeline will resolve the path
+            reference_audio="bruce_en_sample.wav",  # Just filename, Phase1Pipeline will resolve the path
             output_dir="outputs/conversations",
             device=settings.device,
             use_tensorrt=True,
@@ -379,7 +379,7 @@ async def process_conversation(
                 logger.warning("Invalid conversation history JSON, ignoring")
         
         # Process full conversation
-        result = conversation_pipeline.process_conversation(
+        result = await conversation_pipeline.process_conversation(
             audio_path=temp_path,
             conversation_history=history,
             output_name=job_id,

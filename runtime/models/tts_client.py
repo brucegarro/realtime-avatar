@@ -106,14 +106,9 @@ class XTTSClient:
                             logger.info(f"Using reference sample: {filename}")
                             break
             
-            # Map Docker paths to host paths for GPU service
-            # Docker: /app/assets -> Host: /Users/brucegarro/project/realtime-avatar/assets
-            if speaker_wav and speaker_wav.startswith("/app/"):
-                # Running in Docker, need to map to host path
-                host_speaker_wav = speaker_wav.replace("/app/", "/Users/brucegarro/project/realtime-avatar/")
-                # Always use the host path when calling GPU service (which runs on host)
-                speaker_wav = host_speaker_wav
-                logger.info(f"Mapped speaker_wav to host path: {speaker_wav}")
+            # Both containers share the same /app/assets mount, so keep the Docker path
+            if speaker_wav:
+                logger.info(f"Using speaker_wav path: {speaker_wav}")
             
             # Generate output path if not provided
             if not output_path:
@@ -150,20 +145,10 @@ class XTTSClient:
             generation_time_ms = result.get("generation_time_ms", 0)
             audio_duration_s = result.get("duration_s", 0)
             
-            # Copy file from GPU service output to Docker output
-            # Note: In local dev, both GPU service and Docker can access /tmp
-            if remote_audio_path != output_path:
-                # Check if we can access the file directly
-                if os.path.exists(remote_audio_path):
-                    # File accessible - probably on same filesystem
-                    import shutil
-                    shutil.copy2(remote_audio_path, output_path)
-                    logger.info(f"Copied audio from {remote_audio_path} to {output_path}")
-                else:
-                    # File not directly accessible - use remote path
-                    # (for production deployment with remote GPU service, would download via HTTP)
-                    logger.info(f"Using remote audio path: {remote_audio_path}")
-                    output_path = remote_audio_path
+            # Both containers share the gpu-output volume, so we can use the path directly
+            # No need to copy since the file is already accessible
+            output_path = remote_audio_path
+            logger.info(f"Using audio path from GPU service: {output_path}")
             
             total_time_ms = (time.time() - start_time) * 1000
             
