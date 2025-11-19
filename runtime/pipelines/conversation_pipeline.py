@@ -160,8 +160,8 @@ Be natural, warm, and engaging in your communication style."""
         # Fallback if LLM failed to load
         if self.llm_model is None:
             logger.info(f"Using fallback response (LLM not available) for: '{user_message[:100]}...'")
-            # Simple echoing fallback for demonstration
-            response = f"I heard you say: '{user_message}'. This is a demo response since the AI model is still loading."
+            # Simple echoing fallback - just repeat what user said
+            response = user_message
             result = {
                 "response": response,
                 "llm_time": time.time() - start_time,
