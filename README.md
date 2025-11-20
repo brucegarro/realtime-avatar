@@ -2,6 +2,8 @@
 
 Full-stack conversational AI avatar with voice input, intelligent responses, and realistic video synthesis.
 
+https://github.com/user-attachments/assets/049f267a-fb0e-4a2c-9ca2-424db03d7e57
+
 ## 🎯 Overview
 
 **Status:** Phase 4 Deployed ✅ | **Performance:** TTS + Video Working on GCP L4
