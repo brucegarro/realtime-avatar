@@ -262,15 +262,23 @@ async def generate_video(request: ScriptRequest, background_tasks: BackgroundTas
 
 
 @app.get("/api/v1/videos/{filename}")
+@app.head("/api/v1/videos/{filename}")
 async def get_video(filename: str):
-    """Serve generated video file"""
+    """Serve generated video file with CORS headers"""
     # Check GPU service output directory first (for hybrid mode)
     gpu_output_path = os.path.join("/tmp/gpu-service-output", filename)
     if os.path.exists(gpu_output_path):
         return FileResponse(
             gpu_output_path,
             media_type="video/mp4",
-            filename=filename
+            filename=filename,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "no-cache"
+            }
         )
     
     # Fallback to regular output directory
@@ -281,7 +289,14 @@ async def get_video(filename: str):
     return FileResponse(
         video_path,
         media_type="video/mp4",
-        filename=filename
+        filename=filename,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache"
+        }
     )
 
 
@@ -484,6 +499,31 @@ async def process_conversation_stream(
                 if event_type == "video_chunk":
                     video_path = event_data.get("video_path")
                     if video_path:
+                        # Ensure video file exists and is fully written
+                        # GPU service might still be flushing to disk
+                        max_wait = 3.0  # Wait up to 3 seconds
+                        wait_interval = 0.1
+                        waited = 0.0
+                        
+                        while waited < max_wait:
+                            if os.path.exists(video_path):
+                                # File exists, check if it's being written
+                                # by checking file size stability
+                                size1 = os.path.getsize(video_path)
+                                await asyncio.sleep(0.1)
+                                size2 = os.path.getsize(video_path)
+                                
+                                if size1 == size2 and size1 > 0:
+                                    # File size stable and non-zero, file is complete
+                                    break
+                            
+                            await asyncio.sleep(wait_interval)
+                            waited += wait_interval
+                        
+                        if not os.path.exists(video_path):
+                            logger.error(f"Video file not found after {max_wait}s: {video_path}")
+                            continue  # Skip this chunk
+                        
                         video_filename = os.path.basename(video_path)
                         event_data["video_url"] = f"/api/v1/videos/{video_filename}"
                 

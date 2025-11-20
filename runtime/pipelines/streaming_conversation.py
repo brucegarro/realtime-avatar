@@ -313,7 +313,6 @@ Be natural, warm, and engaging in your communication style."""
             
             # Process chunks with true parallelism using asyncio.create_task
             active_tasks = []
-            pending_chunks = []
             
             for i, text_chunk in enumerate(chunks):
                 # Create task immediately (starts execution in background)
@@ -324,43 +323,44 @@ Be natural, warm, and engaging in your communication style."""
                     language=language,
                 ))
                 active_tasks.append(task)
-                pending_chunks.append(i)
                 
-                # If we hit max parallel chunks, wait for any chunk to complete
+                # If we hit max parallel chunks, wait for ONE chunk to complete
                 if len(active_tasks) >= self.max_parallel_chunks:
-                    # Wait for first completed task
+                    # Wait for FIRST completed task only
                     done, active_tasks = await asyncio.wait(
                         active_tasks,
                         return_when=asyncio.FIRST_COMPLETED
                     )
                     
-                    # Yield completed chunk(s)
-                    for completed_task in done:
-                        result = await completed_task
-                        pending_chunks.remove(result["chunk_index"])
-                        yield {
-                            "type": "video_chunk",
-                            "data": result,
-                        }
+                    # Yield only the FIRST completed chunk
+                    completed_task = done.pop()
+                    result = await completed_task
+                    yield {
+                        "type": "video_chunk",
+                        "data": result,
+                    }
                     
-                    # Convert back to list
-                    active_tasks = list(active_tasks)
+                    # Put any other completed tasks back in active list
+                    # (they'll be yielded on next iteration or in cleanup)
+                    active_tasks = list(active_tasks) + list(done)
             
-            # Wait for remaining chunks and yield as they complete
+            # Wait for remaining chunks and yield as they complete ONE AT A TIME
             while active_tasks:
                 done, active_tasks = await asyncio.wait(
                     active_tasks,
                     return_when=asyncio.FIRST_COMPLETED
                 )
                 
-                for completed_task in done:
-                    result = await completed_task
-                    yield {
-                        "type": "video_chunk",
-                        "data": result,
-                    }
+                # Yield only one chunk at a time
+                completed_task = done.pop()
+                result = await completed_task
+                yield {
+                    "type": "video_chunk",
+                    "data": result,
+                }
                 
-                active_tasks = list(active_tasks)
+                # Put other completed tasks back for next iteration
+                active_tasks = list(active_tasks) + list(done)
 
             # Yield completion
             total_time = time.time() - pipeline_start

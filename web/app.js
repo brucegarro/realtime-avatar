@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://34.74.62.18:8000';
+const API_BASE_URL = 'http://35.243.218.244:8000';
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
@@ -175,6 +175,11 @@ async function processStreamingConversation(audioBlob) {
     formData.append('audio', audioBlob, 'recording.webm');
     formData.append('language', languageSelect.value);
     
+    let userText = '';
+    let responseText = '';
+    let chunkCount = 0;
+    const startTime = Date.now();
+    
     // Upload audio and get streaming response
     const response = await fetch(`${API_BASE_URL}/api/v1/conversation/stream`, {
         method: 'POST',
@@ -189,67 +194,84 @@ async function processStreamingConversation(audioBlob) {
     const decoder = new TextDecoder();
     
     let buffer = '';
-    let userText = '';
-    let responseText = '';
-    let chunkCount = 0;
-    const startTime = Date.now();
     
+    // Process stream in real-time
     while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
         
-        buffer += decoder.decode(value, { stream: true });
+        if (done) {
+            console.log('Stream completed');
+            break;
+        }
         
-        // Process complete SSE events
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop(); // Keep incomplete event in buffer
+        // Decode chunk immediately
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
         
-        for (const eventText of lines) {
+        // Process all complete events in buffer
+        let eventEndIndex;
+        while ((eventEndIndex = buffer.indexOf('\n\n')) !== -1) {
+            const eventText = buffer.substring(0, eventEndIndex);
+            buffer = buffer.substring(eventEndIndex + 2);
+            
             if (!eventText.trim()) continue;
             
             const event = parseSSE(eventText);
             if (!event) continue;
             
-            console.log('SSE Event:', event.type, event.data);
+            console.log(`[${(Date.now() - startTime) / 1000}s] SSE Event:`, event.type);
             
+            // Process event immediately
             switch (event.type) {
                 case 'transcription':
                     userText = event.data.text;
                     addToTranscript('user', userText);
                     updateStatus(`Transcribed (${event.data.time.toFixed(1)}s)`, 'loading');
+                    console.log('Transcription:', userText.substring(0, 80));
                     break;
                 
                 case 'llm_response':
                     responseText = event.data.text;
                     addToTranscript('assistant', responseText);
                     updateStatus('Generating video...', 'loading');
+                    console.log('LLM Response:', responseText.substring(0, 80));
                     break;
                 
                 case 'video_chunk':
                     chunkCount++;
-                    const videoUrl = `${API_BASE_URL}${event.data.video_url}`;
+                    // Add cache buster to prevent stale video loading
+                    const baseUrl = `${API_BASE_URL}${event.data.video_url}`;
+                    const videoUrl = baseUrl.includes('?') ? `${baseUrl}&t=${Date.now()}` : `${baseUrl}?t=${Date.now()}`;
                     const chunkTime = event.data.chunk_time;
+                    const elapsedTime = (Date.now() - startTime) / 1000;
                     
-                    // Add to queue and play
+                    console.log(`🎬 Chunk ${chunkCount} received at ${elapsedTime.toFixed(1)}s (generated in ${chunkTime.toFixed(1)}s)`);
+                    
+                    // Add to queue immediately
                     videoQueue.push({
                         url: videoUrl,
                         index: event.data.chunk_index,
                         text: event.data.text_chunk
                     });
                     
+                    console.log(`📥 Added chunk ${event.data.chunk_index} to queue. Queue length: ${videoQueue.length}`);
+                    
                     if (chunkCount === 1) {
-                        const ttff = (Date.now() - startTime) / 1000;
-                        updateStatus(`First chunk (${ttff.toFixed(1)}s TTFF)`, 'loading');
+                        const ttff = elapsedTime;
+                        updateStatus(`⚡ First chunk (${ttff.toFixed(1)}s TTFF)`, 'loading');
+                        console.log(`⚡ TTFF: ${ttff.toFixed(1)}s - Starting playback NOW`);
                     } else {
                         updateStatus(`Chunk ${chunkCount} (${chunkTime.toFixed(1)}s)`, 'loading');
                     }
                     
+                    // Start playback immediately (won't interfere if already playing)
                     playVideoQueue();
                     break;
                 
                 case 'complete':
                     const totalTime = event.data.total_time;
-                    updateStatus(`Complete (${totalTime.toFixed(1)}s, ${chunkCount} chunks)`, 'ready');
+                    updateStatus(`✅ Complete (${totalTime.toFixed(1)}s, ${chunkCount} chunks)`, 'ready');
+                    console.log(`Stream complete: ${totalTime.toFixed(1)}s total, ${chunkCount} chunks`);
                     
                     // Update conversation history
                     if (saveHistoryCheckbox.checked) {
@@ -344,48 +366,174 @@ function parseSSE(eventText) {
 
 // Video Queue Management
 async function playVideoQueue() {
-    if (isPlayingQueue || videoQueue.length === 0) return;
+    // If already playing, just return - the running loop will pick up new chunks
+    if (isPlayingQueue) {
+        console.log('✋ Already playing queue, new chunk will be picked up by running loop');
+        return;
+    }
+    
+    if (videoQueue.length === 0) {
+        console.log('📭 Queue is empty, nothing to play');
+        return;
+    }
     
     isPlayingQueue = true;
+    console.log('▶️ Starting video queue playback...');
     
     while (videoQueue.length > 0) {
         const chunk = videoQueue.shift();
         
-        console.log(`Playing chunk ${chunk.index}: ${chunk.text}`);
+        console.log(`\n🎬 Playing chunk ${chunk.index}:`);
+        console.log(`   Text: "${chunk.text.substring(0, 60)}..."`);
+        console.log(`   URL: ${chunk.url}`);
+        console.log(`   Queue remaining: ${videoQueue.length}`);
         
-        // Load and play video
+        // CRITICAL: Reset video element completely before loading new source
+        console.log('🔄 Resetting video element...');
+        avatarVideo.pause();
+        avatarVideo.removeAttribute('src');
+        videoSource.removeAttribute('src');
+        avatarVideo.load(); // Clear any pending loads
+        
+        // Small delay to ensure reset completes
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Now set new video source
         videoSource.src = chunk.url;
-        avatarVideo.load();
+        console.log(`📺 Video source set to: ${chunk.url}`);
         
-        // Hide placeholder, show video
+        // Show video, hide placeholder
         videoPlaceholder.style.display = 'none';
         avatarVideo.style.display = 'block';
+        console.log('👁️ Video element shown');
+        
+        // Load the new video
+        avatarVideo.load();
+        console.log('🔄 Video load() called');
         
         // Wait for video to be ready
-        await new Promise((resolve) => {
-            avatarVideo.onloadeddata = resolve;
-        });
+        try {
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    console.error(`⏱️ Timeout waiting for video to load after 30s`);
+                    console.error(`   Current state: readyState=${avatarVideo.readyState}, networkState=${avatarVideo.networkState}`);
+                    console.error(`   Video dimensions: ${avatarVideo.videoWidth}x${avatarVideo.videoHeight}`);
+                    console.error(`   Buffered ranges: ${avatarVideo.buffered.length}`);
+                    console.error(`   Current src: ${avatarVideo.currentSrc}`);
+                    console.error(`   Error: ${avatarVideo.error ? avatarVideo.error.message : 'none'}`);
+                    reject(new Error('Video load timeout after 30s'));
+                }, 30000); // Increased to 30 seconds
+                
+                // Log progress more frequently
+                const onProgress = () => {
+                    const buffered = avatarVideo.buffered.length > 0 
+                        ? avatarVideo.buffered.end(0) 
+                        : 0;
+                    console.log(`📊 Loading... readyState=${avatarVideo.readyState}, networkState=${avatarVideo.networkState}, buffered=${buffered.toFixed(1)}s`);
+                };
+                
+                const onLoadStart = () => {
+                    console.log(`🎬 Video load started`);
+                };
+                
+                const onCanPlay = () => {
+                    console.log(`✅ Can play (canplay event) - readyState=${avatarVideo.readyState}`);
+                };
+                
+                const onStalled = () => {
+                    console.warn(`⚠️ Video download stalled`);
+                };
+                
+                const onSuspend = () => {
+                    console.log(`⏸️ Video download suspended by browser`);
+                };
+                
+                avatarVideo.addEventListener('progress', onProgress);
+                avatarVideo.addEventListener('loadstart', onLoadStart);
+                avatarVideo.addEventListener('canplay', onCanPlay);
+                avatarVideo.addEventListener('stalled', onStalled);
+                avatarVideo.addEventListener('suspend', onSuspend);
+                
+                const cleanup = () => {
+                    clearTimeout(timeout);
+                    avatarVideo.removeEventListener('progress', onProgress);
+                    avatarVideo.removeEventListener('loadstart', onLoadStart);
+                    avatarVideo.removeEventListener('canplay', onCanPlay);
+                    avatarVideo.removeEventListener('stalled', onStalled);
+                    avatarVideo.removeEventListener('suspend', onSuspend);
+                };
+                
+                avatarVideo.onloadeddata = () => {
+                    cleanup();
+                    console.log(`✅ Video loaded successfully`);
+                    console.log(`   Duration: ${avatarVideo.duration.toFixed(2)}s`);
+                    console.log(`   Ready state: ${avatarVideo.readyState}`);
+                    console.log(`   Network state: ${avatarVideo.networkState}`);
+                    resolve();
+                };
+                
+                avatarVideo.onerror = () => {
+                    cleanup();
+                    const error = avatarVideo.error;
+                    let errorMsg = 'Unknown error';
+                    if (error) {
+                        const errorCodes = ['', 'MEDIA_ERR_ABORTED', 'MEDIA_ERR_NETWORK', 'MEDIA_ERR_DECODE', 'MEDIA_ERR_SRC_NOT_SUPPORTED'];
+                        errorMsg = errorCodes[error.code] || `Error code ${error.code}`;
+                    }
+                    reject(new Error(`Video error: ${errorMsg}`));
+                };
+                
+                // If we can play, that's good enough
+                avatarVideo.oncanplay = () => {
+                    if (avatarVideo.readyState >= 3) { // HAVE_FUTURE_DATA or better
+                        cleanup();
+                        console.log(`✅ Using canplay event (readyState=${avatarVideo.readyState})`);
+                        resolve();
+                    }
+                };
+            });
+        } catch (err) {
+            console.error(`❌ Video load failed:`, err.message);
+            console.error(`   Skipping to next chunk...`);
+            continue; // Skip to next chunk
+        }
         
         // Play video
         if (autoPlayCheckbox.checked) {
             try {
-                await avatarVideo.play();
+                console.log('▶️ Calling video.play()...');
+                const playPromise = avatarVideo.play();
+                
+                if (playPromise !== undefined) {
+                    await playPromise;
+                    console.log(`✅ Chunk ${chunk.index} is now playing`);
+                } else {
+                    console.log(`⚠️ Play returned undefined (old browser?)`);
+                }
                 
                 // Wait for video to finish
                 await new Promise((resolve) => {
-                    avatarVideo.onended = resolve;
+                    avatarVideo.onended = () => {
+                        console.log(`✅ Chunk ${chunk.index} finished playing`);
+                        resolve();
+                    };
                 });
             } catch (err) {
-                console.log('Playback error:', err);
+                console.error('❌ Playback error:', err.name, err.message);
+                if (err.name === 'NotAllowedError') {
+                    console.error('   User interaction required for autoplay. Please click the video.');
+                    updateStatus('Click video to play', 'error');
+                }
                 break;
             }
         } else {
-            // If autoplay disabled, just show first chunk
+            console.log('⏸️ Autoplay disabled, showing first chunk only');
             break;
         }
     }
     
     isPlayingQueue = false;
+    console.log('🏁 Video queue playback complete\n');
 }
 
 // Play Avatar Video
