@@ -168,14 +168,37 @@ class DittoModel:
             self.sdk.setup_Nd(N_d=num_frames, fade_in=fade_in, fade_out=fade_out, ctrl_info=ctrl_info)
             
             # Process audio (offline mode)
+            video_gen_start = time.time()
             aud_feat = self.sdk.wav2feat.wav2feat(audio)
             self.sdk.audio2motion_queue.put(aud_feat)
             self.sdk.close()
+            video_gen_time = time.time() - video_gen_start
+            logger.info(f"[PERF] Ditto video generation: {video_gen_time:.2f}s")
             
-            # Add audio track to video
+            # Add audio track to video with streaming optimizations
             tmp_video = self.sdk.tmp_output_path
-            cmd = f'ffmpeg -loglevel error -y -i "{tmp_video}" -i "{audio_path}" -map 0:v -map 1:a -c:v copy -c:a aac "{output_path}"'
+            encoding_start = time.time()
+            cmd = (
+                f'ffmpeg -loglevel error -y '
+                f'-i "{tmp_video}" -i "{audio_path}" '
+                f'-map 0:v -map 1:a '
+                f'-c:v libx264 '              # Re-encode video for optimization
+                f'-preset veryfast '          # Fast encoding
+                f'-profile:v baseline '       # Max browser compatibility
+                f'-level 3.0 '                # Lower level for better streaming
+                f'-crf 28 '                   # Balanced quality/size
+                f'-r 18 '                     # 18 FPS (down from 25)
+                f'-movflags +faststart '      # Progressive download - CRITICAL!
+                f'-c:a aac '                  # AAC audio
+                f'-ar 24000 '                 # 24kHz sample rate
+                f'-ac 1 '                     # Mono audio
+                f'-b:a 64k '                  # 64kbps audio bitrate
+                f'"{output_path}"'
+            )
+            logger.info(f"[PERF] FFmpeg command: {cmd}")
             os.system(cmd)
+            encoding_time = time.time() - encoding_start
+            logger.info(f"[PERF] FFmpeg encoding: {encoding_time:.2f}s")
             
             elapsed = time.time() - start_time
             elapsed_ms = elapsed * 1000  # Convert to milliseconds for consistency
@@ -184,7 +207,8 @@ class DittoModel:
                 raise RuntimeError(f"Video generation failed - output not found: {output_path}")
                 
             file_size = os.path.getsize(output_path) / (1024 * 1024)  # MB
-            logger.info(f"Video generated in {elapsed:.2f}s ({file_size:.1f}MB): {output_path}")
+            logger.info(f"[PERF] Total time: {elapsed:.2f}s | Video gen: {video_gen_time:.2f}s | Encoding: {encoding_time:.2f}s | Size: {file_size:.1f}MB")
+            logger.info(f"Video generated: {output_path}")
             
             return output_path, elapsed_ms
             

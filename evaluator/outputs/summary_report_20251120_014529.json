@@ -1,0 +1,386 @@
+{
+  "timestamp": "20251120_014529",
+  "total_tests": 12,
+  "successful": 6,
+  "failed": 6,
+  "success_rate": 0.5,
+  "suite_runtime_s": 225.8306541442871,
+  "tests_per_minute": 3.188229705697879,
+  "avg_test_duration_s": 18.819221178690594,
+  "error_summary": {
+    "has_failures": true,
+    "total_failures": 6,
+    "status_500_count": 6,
+    "status_500_errors": [
+      {
+        "scenario": "Gold Set: en_001",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      },
+      {
+        "scenario": "Gold Set: en_002",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      },
+      {
+        "scenario": "Gold Set: zh_001",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      },
+      {
+        "scenario": "Gold Set: zh_002",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      },
+      {
+        "scenario": "Gold Set: es_001",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      },
+      {
+        "scenario": "Gold Set: es_002",
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}"
+      }
+    ],
+    "error_groups": {
+      "HTTPStatusError": [
+        "Gold Set: en_001",
+        "Gold Set: en_002",
+        "Gold Set: zh_001",
+        "Gold Set: zh_002",
+        "Gold Set: es_001",
+        "Gold Set: es_002"
+      ]
+    },
+    "critical": true
+  },
+  "aggregate_metrics": {
+    "tts_ms_mean": 5944.440007209778,
+    "tts_ms_std": 2817.4349679504235,
+    "avatar_render_ms_mean": 21487.632036209106,
+    "avatar_render_ms_std": 15324.987246388007,
+    "total_generation_ms_mean": 27432.662500000002,
+    "total_generation_ms_std": 18071.74716667444,
+    "audio_duration_s_mean": 8.316333333333334,
+    "evaluator_time_s_mean": 28.911707480748493,
+    "evaluator_time_s_std": 19.103790294287737,
+    "evaluator_time_s_min": 10.043862104415894,
+    "evaluator_time_s_max": 58.80777072906494,
+    "total_evaluator_time_s": 173.47024488449097
+  },
+  "results": [
+    {
+      "scenario_id": "en_short",
+      "scenario_name": "English Short",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064144_b2fa1c78",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763620908264.mp4",
+        "metadata": {
+          "duration_ms": 11432.073,
+          "tts_ms": 4164.107322692871,
+          "avatar_ms": 7267.381906509399,
+          "language": "en",
+          "audio_duration_s": 5.089333333333333
+        }
+      },
+      "metrics": {
+        "tts_ms": 4164.107322692871,
+        "avatar_render_ms": 7267.381906509399,
+        "total_generation_ms": 11432.073,
+        "audio_duration_s": 5.089333333333333,
+        "language_expected": "en",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 11.835033893585205
+      },
+      "video_path": "./evaluator/outputs/en_short_20251120_064144_b2fa1c78.mp4"
+    },
+    {
+      "scenario_id": "zh_short",
+      "scenario_name": "Chinese Short",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064157_ba128647",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763620921207.mp4",
+        "metadata": {
+          "duration_ms": 9741.538,
+          "tts_ms": 3265.523672103882,
+          "avatar_ms": 6475.43478012085,
+          "language": "zh-cn",
+          "audio_duration_s": 4.438666666666666
+        }
+      },
+      "metrics": {
+        "tts_ms": 3265.523672103882,
+        "avatar_render_ms": 6475.43478012085,
+        "total_generation_ms": 9741.538,
+        "audio_duration_s": 4.438666666666666,
+        "language_expected": "zh-cn",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 10.043862104415894
+      },
+      "video_path": "./evaluator/outputs/zh_short_20251120_064157_ba128647.mp4"
+    },
+    {
+      "scenario_id": "es_short",
+      "scenario_name": "Spanish Short",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064209_40b61558",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763620933169.mp4",
+        "metadata": {
+          "duration_ms": 10358.181,
+          "tts_ms": 3180.2361011505127,
+          "avatar_ms": 7177.255868911743,
+          "language": "es",
+          "audio_duration_s": 4.961333333333333
+        }
+      },
+      "metrics": {
+        "tts_ms": 3180.2361011505127,
+        "avatar_render_ms": 7177.255868911743,
+        "total_generation_ms": 10358.181,
+        "audio_duration_s": 4.961333333333333,
+        "language_expected": "es",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 10.901784181594849
+      },
+      "video_path": "./evaluator/outputs/es_short_20251120_064209_40b61558.mp4"
+    },
+    {
+      "scenario_id": "en_medium",
+      "scenario_name": "English Medium",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064222_61400bc1",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763620953982.mp4",
+        "metadata": {
+          "duration_ms": 55865.439,
+          "tts_ms": 11090.224742889404,
+          "avatar_ms": 44774.61075782776,
+          "language": "en",
+          "audio_duration_s": 14.882
+        }
+      },
+      "metrics": {
+        "tts_ms": 11090.224742889404,
+        "avatar_render_ms": 44774.61075782776,
+        "total_generation_ms": 55865.439,
+        "audio_duration_s": 14.882,
+        "language_expected": "en",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 58.80777072906494
+      },
+      "video_path": "./evaluator/outputs/en_medium_20251120_064222_61400bc1.mp4"
+    },
+    {
+      "scenario_id": "zh_medium",
+      "scenario_name": "Chinese Medium",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064323_17236fd3",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763621009975.mp4",
+        "metadata": {
+          "duration_ms": 34061.64,
+          "tts_ms": 6275.0420570373535,
+          "avatar_ms": 27786.06653213501,
+          "language": "zh-cn",
+          "audio_duration_s": 8.887333333333334
+        }
+      },
+      "metrics": {
+        "tts_ms": 6275.0420570373535,
+        "avatar_render_ms": 27786.06653213501,
+        "total_generation_ms": 34061.64,
+        "audio_duration_s": 8.887333333333334,
+        "language_expected": "zh-cn",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 36.78242874145508
+      },
+      "video_path": "./evaluator/outputs/zh_medium_20251120_064323_17236fd3.mp4"
+    },
+    {
+      "scenario_id": "es_medium",
+      "scenario_name": "Spanish Medium",
+      "status": "success",
+      "result": {
+        "job_id": "20251120_064402_59dd89de",
+        "status": "completed",
+        "message": "Video generated successfully",
+        "video_url": "/api/v1/videos/avatar_ditto_1763621050178.mp4",
+        "metadata": {
+          "duration_ms": 43137.104,
+          "tts_ms": 7691.506147384644,
+          "avatar_ms": 35445.04237174988,
+          "language": "es",
+          "audio_duration_s": 11.639333333333333
+        }
+      },
+      "metrics": {
+        "tts_ms": 7691.506147384644,
+        "avatar_render_ms": 35445.04237174988,
+        "total_generation_ms": 43137.104,
+        "audio_duration_s": 11.639333333333333,
+        "language_expected": "es",
+        "language_detected": "unknown",
+        "language_from_text": "unknown",
+        "language_correctness_1_1": 0,
+        "speaker_similarity": 0.0,
+        "f0_rmse_hz": 0.0,
+        "lip_sync_coherence_0_1": 0.0,
+        "evaluator_total_time_s": 45.099365234375
+      },
+      "video_path": "./evaluator/outputs/es_medium_20251120_064402_59dd89de.mp4"
+    },
+    {
+      "scenario_id": "gold_en_001",
+      "scenario_name": "Gold Set: en_001",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:44:48 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 6.473339080810547
+    },
+    {
+      "scenario_id": "gold_en_002",
+      "scenario_name": "Gold Set: en_002",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:44:57 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 6.269330978393555
+    },
+    {
+      "scenario_id": "gold_zh_001",
+      "scenario_name": "Gold Set: zh_001",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:45:05 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 1.8741772174835205
+    },
+    {
+      "scenario_id": "gold_zh_002",
+      "scenario_name": "Gold Set: zh_002",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:45:09 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 4.481353044509888
+    },
+    {
+      "scenario_id": "gold_es_001",
+      "scenario_name": "Gold Set: es_001",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:45:16 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 3.875534772872925
+    },
+    {
+      "scenario_id": "gold_es_002",
+      "scenario_name": "Gold Set: es_002",
+      "status": "failed",
+      "error": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "error_details": {
+        "error_type": "HTTPStatusError",
+        "error_message": "Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/brucegarro/project/realtime-avatar/evaluator/run_evaluator.py\", line 84, in run_generation\n    response.raise_for_status()\n  File \"/Users/brucegarro/Library/Python/3.9/lib/python/site-packages/httpx/_models.py\", line 829, in raise_for_status\n    raise HTTPStatusError(message, request=request, response=self)\nhttpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://35.243.218.244:8000/api/v1/generate'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\n",
+        "status_code": 500,
+        "response_body": "{\"detail\":\"Generation failed: Reference image not found: /app/assets/images/bruce_neutral.jpg\"}",
+        "response_headers": {
+          "date": "Thu, 20 Nov 2025 06:45:22 GMT",
+          "server": "uvicorn",
+          "content-length": "95",
+          "content-type": "application/json"
+        }
+      },
+      "evaluator_total_time_s": 5.22338080406189
+    }
+  ]
+}

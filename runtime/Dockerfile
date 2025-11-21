@@ -97,4 +97,11 @@ WORKDIR /app/runtime
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Optimize uvicorn for better static file serving and SSE streaming
+CMD ["python", "-m", "uvicorn", "app:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--timeout-keep-alive", "75", \
+     "--limit-concurrency", "100", \
+     "--backlog", "2048", \
+     "--no-access-log"]

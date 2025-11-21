@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://35.243.218.244:8000';
+const API_BASE_URL = 'http://34.138.239.196:8000';
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
@@ -239,33 +239,85 @@ async function processStreamingConversation(audioBlob) {
                 
                 case 'video_chunk':
                     chunkCount++;
+                    const receiveTime = Date.now();
+                    const elapsedTime = (receiveTime - startTime) / 1000;
+                    const chunkIndex = event.data.chunk_index;
+                    
                     // Add cache buster to prevent stale video loading
                     const baseUrl = `${API_BASE_URL}${event.data.video_url}`;
-                    const videoUrl = baseUrl.includes('?') ? `${baseUrl}&t=${Date.now()}` : `${baseUrl}?t=${Date.now()}`;
+                    const videoUrl = baseUrl.includes('?') ? `${baseUrl}&t=${receiveTime}` : `${baseUrl}?t=${receiveTime}`;
                     const chunkTime = event.data.chunk_time;
-                    const elapsedTime = (Date.now() - startTime) / 1000;
                     
-                    console.log(`🎬 Chunk ${chunkCount} received at ${elapsedTime.toFixed(1)}s (generated in ${chunkTime.toFixed(1)}s)`);
+                    console.log(`📨 [PERF] Chunk ${chunkIndex} SSE event received at t=${elapsedTime.toFixed(2)}s (arrival #${chunkCount})`);
+                    console.log(`   Generated in: ${chunkTime.toFixed(2)}s`);
+                    console.log(`   Video URL: ${event.data.video_url}`);
                     
-                    // Add to queue immediately
-                    videoQueue.push({
-                        url: videoUrl,
-                        index: event.data.chunk_index,
-                        text: event.data.text_chunk
-                    });
-                    
-                    console.log(`📥 Added chunk ${event.data.chunk_index} to queue. Queue length: ${videoQueue.length}`);
-                    
-                    if (chunkCount === 1) {
+                    // For chunk 0 (actual first chunk), preload it before adding to queue
+                    if (chunkIndex === 0) {
                         const ttff = elapsedTime;
-                        updateStatus(`⚡ First chunk (${ttff.toFixed(1)}s TTFF)`, 'loading');
-                        console.log(`⚡ TTFF: ${ttff.toFixed(1)}s - Starting playback NOW`);
+                        updateStatus(`⚡ First chunk (${ttff.toFixed(1)}s TTFF) - Preloading...`, 'loading');
+                        console.log(`⚡ [PERF] TTFF: ${ttff.toFixed(2)}s - Preloading first chunk`);
+                        
+                        // Start preloading the first chunk
+                        const preloadStart = Date.now();
+                        console.log(`📥 [PERF] Starting first chunk preload: ${videoUrl}`);
+                        
+                        try {
+                            // Use fetch to start downloading
+                            const response = await fetch(videoUrl);
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            
+                            // Create blob from response
+                            const blob = await response.blob();
+                            const blobUrl = URL.createObjectURL(blob);
+                            const preloadTime = (Date.now() - preloadStart) / 1000;
+                            
+                            const downloadSpeed = (blob.size / 1024 / 1024) / preloadTime;
+                            console.log(`✅ [PERF] Chunk 0 preloaded in ${preloadTime.toFixed(2)}s (${(blob.size / 1024 / 1024).toFixed(2)}MB @ ${downloadSpeed.toFixed(2)} MB/s)`);
+                            
+                            // Add to queue with blob URL
+                            videoQueue.push({
+                                url: blobUrl,
+                                index: chunkIndex,
+                                text: event.data.text_chunk,
+                                receiveTime: receiveTime,
+                                isBlob: true  // Mark for cleanup
+                            });
+                            
+                            updateStatus(`▶️ Playing chunk 0`, 'loading');
+                        } catch (err) {
+                            console.error(`❌ [PERF] Chunk 0 preload failed: ${err.message}`);
+                            // Fall back to direct URL
+                            videoQueue.push({
+                                url: videoUrl,
+                                index: chunkIndex,
+                                text: event.data.text_chunk,
+                                receiveTime: receiveTime
+                            });
+                        }
                     } else {
-                        updateStatus(`Chunk ${chunkCount} (${chunkTime.toFixed(1)}s)`, 'loading');
+                        // Subsequent chunks - add directly to queue (they can download while previous plays)
+                        videoQueue.push({
+                            url: videoUrl,
+                            index: chunkIndex,
+                            text: event.data.text_chunk,
+                            receiveTime: receiveTime
+                        });
+                        updateStatus(`Chunk ${chunkIndex} (${chunkTime.toFixed(1)}s)`, 'loading');
                     }
                     
-                    // Start playback immediately (won't interfere if already playing)
-                    playVideoQueue();
+                    console.log(`📥 Added chunk ${chunkIndex} to queue (position in sequence). Queue length: ${videoQueue.length}`);
+                    
+                    // Only start playback when chunk 0 arrives (ensures correct order)
+                    // or if already playing (queue will sort and pick up new chunks)
+                    if (chunkIndex === 0 || isPlayingQueue) {
+                        playVideoQueue();
+                    } else {
+                        console.log(`⏳ Waiting for chunk 0 before starting playback (have chunk ${chunkIndex})`);
+                    }
+                    break;
                     break;
                 
                 case 'complete':
@@ -381,14 +433,21 @@ async function playVideoQueue() {
     console.log('▶️ Starting video queue playback...');
     
     while (videoQueue.length > 0) {
-        const chunk = videoQueue.shift();
+        // Sort queue by chunk index to ensure correct playback order
+        videoQueue.sort((a, b) => a.index - b.index);
         
-        console.log(`\n🎬 Playing chunk ${chunk.index}:`);
+        const chunk = videoQueue.shift();
+        const chunkStartTime = Date.now();
+        const timeSinceReceive = (chunkStartTime - chunk.receiveTime) / 1000;
+        
+        console.log(`\n🎬 [PERF] Playing chunk ${chunk.index}:`);
         console.log(`   Text: "${chunk.text.substring(0, 60)}..."`);
         console.log(`   URL: ${chunk.url}`);
         console.log(`   Queue remaining: ${videoQueue.length}`);
+        console.log(`   Time since SSE receive: ${timeSinceReceive.toFixed(2)}s`);
         
         // CRITICAL: Reset video element completely before loading new source
+        const resetStart = Date.now();
         console.log('🔄 Resetting video element...');
         avatarVideo.pause();
         avatarVideo.removeAttribute('src');
@@ -397,8 +456,11 @@ async function playVideoQueue() {
         
         // Small delay to ensure reset completes
         await new Promise(resolve => setTimeout(resolve, 50));
+        const resetTime = (Date.now() - resetStart) / 1000;
+        console.log(`   Reset took: ${resetTime.toFixed(3)}s`);
         
         // Now set new video source
+        const sourceSetStart = Date.now();
         videoSource.src = chunk.url;
         console.log(`📺 Video source set to: ${chunk.url}`);
         
@@ -408,8 +470,9 @@ async function playVideoQueue() {
         console.log('👁️ Video element shown');
         
         // Load the new video
+        const loadStart = Date.now();
         avatarVideo.load();
-        console.log('🔄 Video load() called');
+        console.log('🔄 [PERF] Video load() called at t=' + ((loadStart - chunkStartTime) / 1000).toFixed(3) + 's');
         
         // Wait for video to be ready
         try {
@@ -464,8 +527,9 @@ async function playVideoQueue() {
                 };
                 
                 avatarVideo.onloadeddata = () => {
+                    const loadTime = (Date.now() - loadStart) / 1000;
                     cleanup();
-                    console.log(`✅ Video loaded successfully`);
+                    console.log(`✅ [PERF] Video loaded successfully in ${loadTime.toFixed(2)}s`);
                     console.log(`   Duration: ${avatarVideo.duration.toFixed(2)}s`);
                     console.log(`   Ready state: ${avatarVideo.readyState}`);
                     console.log(`   Network state: ${avatarVideo.networkState}`);
@@ -473,6 +537,7 @@ async function playVideoQueue() {
                 };
                 
                 avatarVideo.onerror = () => {
+                    const loadTime = (Date.now() - loadStart) / 1000;
                     cleanup();
                     const error = avatarVideo.error;
                     let errorMsg = 'Unknown error';
@@ -480,20 +545,23 @@ async function playVideoQueue() {
                         const errorCodes = ['', 'MEDIA_ERR_ABORTED', 'MEDIA_ERR_NETWORK', 'MEDIA_ERR_DECODE', 'MEDIA_ERR_SRC_NOT_SUPPORTED'];
                         errorMsg = errorCodes[error.code] || `Error code ${error.code}`;
                     }
+                    console.error(`❌ [PERF] Video error after ${loadTime.toFixed(2)}s: ${errorMsg}`);
                     reject(new Error(`Video error: ${errorMsg}`));
                 };
                 
                 // If we can play, that's good enough
                 avatarVideo.oncanplay = () => {
+                    const loadTime = (Date.now() - loadStart) / 1000;
                     if (avatarVideo.readyState >= 3) { // HAVE_FUTURE_DATA or better
                         cleanup();
-                        console.log(`✅ Using canplay event (readyState=${avatarVideo.readyState})`);
+                        console.log(`✅ [PERF] Using canplay event (readyState=${avatarVideo.readyState}) after ${loadTime.toFixed(2)}s`);
                         resolve();
                     }
                 };
             });
         } catch (err) {
-            console.error(`❌ Video load failed:`, err.message);
+            const loadTime = (Date.now() - loadStart) / 1000;
+            console.error(`❌ [PERF] Video load failed after ${loadTime.toFixed(2)}s:`, err.message);
             console.error(`   Skipping to next chunk...`);
             continue; // Skip to next chunk
         }
@@ -515,11 +583,25 @@ async function playVideoQueue() {
                 await new Promise((resolve) => {
                     avatarVideo.onended = () => {
                         console.log(`✅ Chunk ${chunk.index} finished playing`);
+                        
+                        // Clean up blob URL if this was a preloaded chunk
+                        if (chunk.isBlob) {
+                            URL.revokeObjectURL(chunk.url);
+                            console.log(`🗑️ Cleaned up blob URL for chunk ${chunk.index}`);
+                        }
+                        
                         resolve();
                     };
                 });
             } catch (err) {
                 console.error('❌ Playback error:', err.name, err.message);
+                
+                // Clean up blob URL on error too
+                if (chunk.isBlob) {
+                    URL.revokeObjectURL(chunk.url);
+                    console.log(`🗑️ Cleaned up blob URL after error`);
+                }
+                
                 if (err.name === 'NotAllowedError') {
                     console.error('   User interaction required for autoplay. Please click the video.');
                     updateStatus('Click video to play', 'error');

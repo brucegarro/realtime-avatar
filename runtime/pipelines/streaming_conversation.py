@@ -35,7 +35,7 @@ class StreamingConversationPipeline:
         output_dir: str = "outputs/conversations",
         device: str = "cuda",
         use_tensorrt: bool = True,
-        max_parallel_chunks: int = 3,
+        max_parallel_chunks: int = 1,  # Must be 1: GPU service processes requests serially
     ):
         """
         Initialize streaming conversation pipeline.
@@ -46,7 +46,9 @@ class StreamingConversationPipeline:
             output_dir: Directory to save conversation outputs
             device: Device for inference ('cuda', 'mps', or 'cpu')
             use_tensorrt: Whether to use TensorRT for video generation
-            max_parallel_chunks: Maximum number of chunks to process in parallel
+            max_parallel_chunks: Must be 1. GPU service runs single-worker uvicorn and processes
+                requests serially. L4 GPU cannot handle concurrent Ditto instances due to CUDA
+                context limitations. Parallel requests would just queue at GPU service anyway.
         """
         self.reference_image = reference_image
         self.reference_audio = reference_audio
@@ -327,40 +329,39 @@ Be natural, warm, and engaging in your communication style."""
                 # If we hit max parallel chunks, wait for ONE chunk to complete
                 if len(active_tasks) >= self.max_parallel_chunks:
                     # Wait for FIRST completed task only
-                    done, active_tasks = await asyncio.wait(
+                    done, pending = await asyncio.wait(
                         active_tasks,
                         return_when=asyncio.FIRST_COMPLETED
                     )
                     
-                    # Yield only the FIRST completed chunk
-                    completed_task = done.pop()
+                    # Yield ALL completed chunks immediately
+                    for completed_task in done:
+                        result = await completed_task
+                        yield {
+                            "type": "video_chunk",
+                            "data": result,
+                        }
+                    
+                    # Convert pending set back to list
+                    active_tasks = list(pending)
+            
+            # Wait for remaining chunks and yield as they complete
+            while active_tasks:
+                done, pending = await asyncio.wait(
+                    active_tasks,
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                # Yield ALL completed chunks immediately
+                for completed_task in done:
                     result = await completed_task
                     yield {
                         "type": "video_chunk",
                         "data": result,
                     }
-                    
-                    # Put any other completed tasks back in active list
-                    # (they'll be yielded on next iteration or in cleanup)
-                    active_tasks = list(active_tasks) + list(done)
-            
-            # Wait for remaining chunks and yield as they complete ONE AT A TIME
-            while active_tasks:
-                done, active_tasks = await asyncio.wait(
-                    active_tasks,
-                    return_when=asyncio.FIRST_COMPLETED
-                )
                 
-                # Yield only one chunk at a time
-                completed_task = done.pop()
-                result = await completed_task
-                yield {
-                    "type": "video_chunk",
-                    "data": result,
-                }
-                
-                # Put other completed tasks back for next iteration
-                active_tasks = list(active_tasks) + list(done)
+                # Convert pending set back to list
+                active_tasks = list(pending)
 
             # Yield completion
             total_time = time.time() - pipeline_start

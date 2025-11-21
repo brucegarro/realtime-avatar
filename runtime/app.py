@@ -12,6 +12,7 @@ from typing import Optional, List, Dict
 import logging
 import os
 import uuid
+import time
 from datetime import datetime
 import shutil
 import json
@@ -497,39 +498,26 @@ async def process_conversation_stream(
                 
                 # Add video URL for video chunks
                 if event_type == "video_chunk":
+                    chunk_index = event_data.get("chunk_index", "?")
+                    chunk_time = event_data.get("chunk_time", 0)
                     video_path = event_data.get("video_path")
+                    logger.info(f"[PERF] Chunk {chunk_index} ready to send (generated in {chunk_time:.2f}s)")
+                    
                     if video_path:
-                        # Ensure video file exists and is fully written
-                        # GPU service might still be flushing to disk
-                        max_wait = 3.0  # Wait up to 3 seconds
-                        wait_interval = 0.1
-                        waited = 0.0
-                        
-                        while waited < max_wait:
-                            if os.path.exists(video_path):
-                                # File exists, check if it's being written
-                                # by checking file size stability
-                                size1 = os.path.getsize(video_path)
-                                await asyncio.sleep(0.1)
-                                size2 = os.path.getsize(video_path)
-                                
-                                if size1 == size2 and size1 > 0:
-                                    # File size stable and non-zero, file is complete
-                                    break
-                            
-                            await asyncio.sleep(wait_interval)
-                            waited += wait_interval
-                        
-                        if not os.path.exists(video_path):
-                            logger.error(f"Video file not found after {max_wait}s: {video_path}")
-                            continue  # Skip this chunk
-                        
+                        # Don't wait for file - send SSE immediately
+                        # Frontend's HTTP request will naturally wait for file availability
+                        # This reduces latency by allowing parallel download start
                         video_filename = os.path.basename(video_path)
                         event_data["video_url"] = f"/api/v1/videos/{video_filename}"
+                        logger.info(f"[PERF] Chunk {chunk_index} SSE sent immediately: {video_filename}")
                 
                 # Send SSE event
+                send_time = time.time()
                 yield f"event: {event_type}\n"
                 yield f"data: {json.dumps(event_data)}\n\n"
+                if event_type == "video_chunk":
+                    chunk_index = event_data.get("chunk_index", "?")
+                    logger.info(f"[PERF] Chunk {chunk_index} SSE event sent at t={send_time:.2f}")
                 
         except Exception as e:
             logger.error(f"[{job_id}] Streaming conversation failed: {e}", exc_info=True)
