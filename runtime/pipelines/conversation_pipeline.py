@@ -108,7 +108,11 @@ Be natural, warm, and engaging in your communication style."""
         logger.info(f"Transcribing audio: {audio_path}")
 
         # ASR model returns (text, language, confidence) tuple
-        transcribe_result = self.asr_model.transcribe(audio_path, language=language)
+        transcribe_result = self.asr_model.transcribe(
+            audio_path,
+            language=language,
+            vad_filter=False
+        )
         
         # Handle both tuple formats: (text, language, confidence) or (text, metadata)
         if isinstance(transcribe_result, tuple):

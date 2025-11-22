@@ -15,6 +15,7 @@ import uuid
 import time
 from datetime import datetime
 import shutil
+import ffmpeg
 import json
 import asyncio
 
@@ -371,9 +372,17 @@ async def transcribe_audio(audio: UploadFile = File(...), language: str = "en"):
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(audio.file, f)
-        
-        # Transcribe
-        result = conversation_pipeline.transcribe(temp_path, language=language)
+
+        wav_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}.wav"
+        (
+            ffmpeg
+            .input(temp_path)
+            .output(wav_path, ar=16000, ac=1, format='wav')
+            .overwrite_output()
+            .run(quiet=True)
+        )
+
+        result = conversation_pipeline.transcribe(wav_path, language=language)
         
         return TranscribeResponse(
             text=result["text"],
@@ -386,9 +395,13 @@ async def transcribe_audio(audio: UploadFile = File(...), language: str = "en"):
         logger.error(f"Transcription failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
     finally:
-        # Clean up temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
+        try:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+        except Exception:
+            pass
 
 
 @app.post("/api/v1/chat", response_model=ChatResponse)
@@ -443,6 +456,15 @@ async def process_conversation(
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(audio.file, f)
+
+        wav_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}.wav"
+        (
+            ffmpeg
+            .input(temp_path)
+            .output(wav_path, ar=16000, ac=1, format='wav')
+            .overwrite_output()
+            .run(quiet=True)
+        )
         
         # Parse conversation history if provided
         history = None
@@ -472,7 +494,7 @@ async def process_conversation(
                 pass
 
         result = await conversation_pipeline.process_conversation(
-            audio_path=temp_path,
+            audio_path=wav_path,
             conversation_history=history,
             output_name=job_id,
             language=language,
@@ -505,9 +527,13 @@ async def process_conversation(
         logger.error(f"[{job_id}] Conversation processing failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Conversation failed: {str(e)}")
     finally:
-        # Clean up temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
+        try:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+        except Exception:
+            pass
 
 
 @app.post("/api/v1/conversation/stream")

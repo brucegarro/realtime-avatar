@@ -265,7 +265,6 @@ async function processRecording() {
         if (USE_STREAMING && isBruceDefault) {
             await processStreamingConversation(audioBlob);
         } else {
-            // For non-Bruce selections, use the client pipeline to guarantee selected assets
             await processClientPipeline(audioBlob, selectedImage, selectedVoice);
         }
         
@@ -283,47 +282,34 @@ async function processRecording() {
     }
 }
 
-// Client-orchestrated pipeline: ASR -> Chat -> Generate with selected avatar assets
+// Client-orchestrated pipeline: Use server-side conversation with selected assets
 async function processClientPipeline(audioBlob, selectedImage, selectedVoice) {
     try {
-        // 1) Transcribe
-        const transcribeFd = new FormData();
-        transcribeFd.append('audio', audioBlob, 'recording.webm');
-        transcribeFd.append('language', languageSelect.value);
-        let userText = '';
-        let txData = null;
-        const txRes = await fetch(`${API_BASE_URL}/api/v1/transcribe`, { method: 'POST', body: transcribeFd });
-        if (txRes.ok) {
-            txData = await txRes.json();
-            userText = txData.text;
-            addToTranscript('user', userText);
-            updateStatus(`Transcribed (${txData.transcribe_time.toFixed(1)}s)`, 'loading');
-        } else {
-            // Fallback: do not insert default prompt into transcript; inform user
-            userText = 'Hello! Please introduce yourself briefly.';
-            console.warn('ASR failed, falling back to default prompt');
-            addToTranscript('system', 'ASR failed; continuing with a default prompt to generate a response');
-            updateStatus('ASR failed → using default prompt', 'loading');
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('language', languageSelect.value);
+        if (imageSelect.value) formData.append('reference_image', selectedImage);
+        if (voiceSelect.value) formData.append('voice_sample', selectedVoice);
+        const avatarId = localStorage.getItem('selectedAvatarId');
+        if (avatarId) formData.append('avatar_id', avatarId);
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/conversation`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || `Conversation HTTP ${response.status}`);
         }
 
-        // 2) Chat
-        const chRes = await fetch(`${API_BASE_URL}/api/v1/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userText, conversation_history: conversationHistory })
-        });
-        if (!chRes.ok) throw new Error(`Chat HTTP ${chRes.status}`);
-        const chData = await chRes.json();
-        const responseText = chData.response;
-        addToTranscript('assistant', responseText);
-        updateStatus('Generating video...', 'loading');
-
-        // 3) Generate video
+        const data = await response.json();
+        addToTranscript('user', data.user_text);
+        addToTranscript('assistant', data.response_text);
         const genRes = await fetch(`${API_BASE_URL}/api/v1/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                text: responseText,
+                text: data.response_text,
                 language: languageSelect.value,
                 reference_image: selectedImage || undefined,
                 voice_sample: selectedVoice || undefined
@@ -335,7 +321,7 @@ async function processClientPipeline(audioBlob, selectedImage, selectedVoice) {
         playAvatarVideo(videoUrl);
         updateStatus('Ready', 'ready');
     } catch (err) {
-        console.error('Client pipeline failed:', err);
+        console.error('Conversation failed:', err);
         updateStatus('Processing failed', 'error');
         addToTranscript('system', `Error: ${err.message}`);
     }
