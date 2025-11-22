@@ -4,7 +4,8 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://34.26.174.48:8000';
+const DEFAULT_API_BASE_URL = 'http://34.26.174.48:8000';
+const API_BASE_URL = (typeof localStorage !== 'undefined' && localStorage.getItem('apiBaseUrl')) || DEFAULT_API_BASE_URL;
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
@@ -26,16 +27,23 @@ const videoSource = document.getElementById('videoSource');
 const videoPlaceholder = document.getElementById('videoPlaceholder');
 const clearBtn = document.getElementById('clearBtn');
 const languageSelect = document.getElementById('languageSelect');
+const avatarSelect = document.getElementById('avatarSelect');
+const imageSelect = document.getElementById('imageSelect');
+const voiceSelect = document.getElementById('voiceSelect');
+const apiBaseUrlInput = document.getElementById('apiBaseUrlInput');
+const saveApiBtn = document.getElementById('saveApiBtn');
 const autoPlayCheckbox = document.getElementById('autoPlayCheckbox');
 const saveHistoryCheckbox = document.getElementById('saveHistoryCheckbox');
 
 // Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Initializing Realtime Avatar web app...');
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('Initializing Realtime Avatar web app...');
+        if (apiBaseUrlInput) apiBaseUrlInput.value = API_BASE_URL;
     await checkServerHealth();
-    setupEventListeners();
-    loadConversationHistory();
-});
+        await loadAssets();
+        setupEventListeners();
+        loadConversationHistory();
+    });
 
 // Setup Event Listeners
 function setupEventListeners() {
@@ -53,6 +61,41 @@ function setupEventListeners() {
             localStorage.removeItem('conversationHistory');
         }
     });
+    if (avatarSelect) {
+        avatarSelect.addEventListener('change', () => {
+            localStorage.setItem('selectedAvatarId', avatarSelect.value);
+            if (avatarSelect.value === 'ming') {
+                ensureOption(imageSelect, 'ming_neutral.jpg', 'ming_neutral.jpg');
+                ensureOption(voiceSelect, 'ming_en_sample.wav', 'ming_en_sample.wav');
+                if (imageSelect) imageSelect.value = 'ming_neutral.jpg';
+                if (voiceSelect) voiceSelect.value = 'ming_en_sample.wav';
+            } else if (avatarSelect.value === 'bruce') {
+                ensureOption(imageSelect, 'bruce_haircut_small.jpg', 'bruce_haircut_small.jpg');
+                ensureOption(voiceSelect, 'bruce_en_sample.wav', 'bruce_en_sample.wav');
+                if (imageSelect) imageSelect.value = 'bruce_haircut_small.jpg';
+                if (voiceSelect) voiceSelect.value = 'bruce_en_sample.wav';
+            }
+        });
+    }
+    imageSelect.addEventListener('change', () => {
+        localStorage.setItem('selectedImage', imageSelect.value);
+    });
+    voiceSelect.addEventListener('change', () => {
+        localStorage.setItem('selectedVoice', voiceSelect.value);
+    });
+    if (saveApiBtn) {
+        saveApiBtn.addEventListener('click', () => {
+            const newUrl = apiBaseUrlInput.value.trim();
+            if (!newUrl) return;
+            try {
+                localStorage.setItem('apiBaseUrl', newUrl);
+                location.reload();
+            } catch (e) {
+                console.error('Failed to save API base URL:', e);
+                alert('Failed to save backend URL');
+            }
+        });
+    }
 }
 
 // Toggle Recording (Click to Start/Stop)
@@ -95,6 +138,58 @@ async function checkServerHealth() {
         updateStatus('Server offline', 'error');
         console.error('Health check failed:', error);
         console.error('API_BASE_URL:', API_BASE_URL);
+    }
+}
+
+async function loadAssets() {
+    try {
+        const [imagesRes, voicesRes, avatarsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/v1/assets/images`, { cache: 'no-cache' }),
+            fetch(`${API_BASE_URL}/api/v1/assets/voice-samples`, { cache: 'no-cache' }),
+            fetch(`${API_BASE_URL}/api/v1/avatars`, { cache: 'no-cache' })
+        ]);
+        const images = (await imagesRes.json()).images || [];
+        const voices = (await voicesRes.json()).samples || [];
+        const avatars = (await avatarsRes.json()).avatars || [];
+        let finalAvatars = avatars;
+        if (!finalAvatars || finalAvatars.length === 0) {
+            finalAvatars = [];
+            if (images.includes('ming_neutral.jpg') && voices.includes('ming_en_sample.wav')) {
+                finalAvatars.push({ id: 'ming', name: 'Ming' });
+            }
+            if (images.includes('bruce_haircut_small.jpg') && voices.includes('bruce_en_sample.wav')) {
+                finalAvatars.push({ id: 'bruce', name: 'Bruce' });
+            }
+        }
+        if (avatarSelect) {
+            avatarSelect.innerHTML = finalAvatars.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            const savedAvatar = localStorage.getItem('selectedAvatarId');
+            if (savedAvatar && finalAvatars.some(a => a.id === savedAvatar)) avatarSelect.value = savedAvatar;
+        }
+        imageSelect.innerHTML = images.map(name => `<option value="${name}">${name}</option>`).join('');
+        voiceSelect.innerHTML = voices.map(name => `<option value="${name}">${name}</option>`).join('');
+        // Ensure known options exist even if backend list is temporarily empty
+        ensureOption(imageSelect, 'bruce_haircut_small.jpg', 'bruce_haircut_small.jpg');
+        ensureOption(voiceSelect, 'bruce_en_sample.wav', 'bruce_en_sample.wav');
+        ensureOption(imageSelect, 'ming_neutral.jpg', 'ming_neutral.jpg');
+        ensureOption(voiceSelect, 'ming_en_sample.wav', 'ming_en_sample.wav');
+        const savedImage = localStorage.getItem('selectedImage');
+        const savedVoice = localStorage.getItem('selectedVoice');
+        if (savedImage && images.includes(savedImage)) imageSelect.value = savedImage;
+        if (savedVoice && voices.includes(savedVoice)) voiceSelect.value = savedVoice;
+    } catch (e) {
+        console.error('Failed to load assets:', e);
+    }
+}
+
+function ensureOption(selectEl, value, label) {
+    if (!selectEl) return;
+    const exists = Array.from(selectEl.options).some(opt => opt.value === value);
+    if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label || value;
+        selectEl.appendChild(opt);
     }
 }
 
@@ -163,11 +258,15 @@ async function processRecording() {
     try {
         // Create audio blob
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        
-        if (USE_STREAMING) {
+        const selectedImage = imageSelect.value;
+        const selectedVoice = voiceSelect.value;
+        const isBruceDefault = (selectedImage === 'bruce_haircut_small.jpg') && (selectedVoice === 'bruce_en_sample.wav');
+
+        if (USE_STREAMING && isBruceDefault) {
             await processStreamingConversation(audioBlob);
         } else {
-            await processBlockingConversation(audioBlob);
+            // For non-Bruce selections, use the client pipeline to guarantee selected assets
+            await processClientPipeline(audioBlob, selectedImage, selectedVoice);
         }
         
     } catch (error) {
@@ -184,11 +283,73 @@ async function processRecording() {
     }
 }
 
+// Client-orchestrated pipeline: ASR -> Chat -> Generate with selected avatar assets
+async function processClientPipeline(audioBlob, selectedImage, selectedVoice) {
+    try {
+        // 1) Transcribe
+        const transcribeFd = new FormData();
+        transcribeFd.append('audio', audioBlob, 'recording.webm');
+        transcribeFd.append('language', languageSelect.value);
+        let userText = '';
+        let txData = null;
+        const txRes = await fetch(`${API_BASE_URL}/api/v1/transcribe`, { method: 'POST', body: transcribeFd });
+        if (txRes.ok) {
+            txData = await txRes.json();
+            userText = txData.text;
+            addToTranscript('user', userText);
+            updateStatus(`Transcribed (${txData.transcribe_time.toFixed(1)}s)`, 'loading');
+        } else {
+            // Fallback: do not insert default prompt into transcript; inform user
+            userText = 'Hello! Please introduce yourself briefly.';
+            console.warn('ASR failed, falling back to default prompt');
+            addToTranscript('system', 'ASR failed; continuing with a default prompt to generate a response');
+            updateStatus('ASR failed → using default prompt', 'loading');
+        }
+
+        // 2) Chat
+        const chRes = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userText, conversation_history: conversationHistory })
+        });
+        if (!chRes.ok) throw new Error(`Chat HTTP ${chRes.status}`);
+        const chData = await chRes.json();
+        const responseText = chData.response;
+        addToTranscript('assistant', responseText);
+        updateStatus('Generating video...', 'loading');
+
+        // 3) Generate video
+        const genRes = await fetch(`${API_BASE_URL}/api/v1/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: responseText,
+                language: languageSelect.value,
+                reference_image: selectedImage || undefined,
+                voice_sample: selectedVoice || undefined
+            })
+        });
+        if (!genRes.ok) throw new Error(`Generate HTTP ${genRes.status}`);
+        const genData = await genRes.json();
+        const videoUrl = `${API_BASE_URL}${genData.video_url}`;
+        playAvatarVideo(videoUrl);
+        updateStatus('Ready', 'ready');
+    } catch (err) {
+        console.error('Client pipeline failed:', err);
+        updateStatus('Processing failed', 'error');
+        addToTranscript('system', `Error: ${err.message}`);
+    }
+}
+
 // Process with Streaming (SSE)
 async function processStreamingConversation(audioBlob) {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
     formData.append('language', languageSelect.value);
+    const avatarId = localStorage.getItem('selectedAvatarId');
+    if (avatarId) formData.append('avatar_id', avatarId);
+    if (imageSelect.value) formData.append('reference_image', imageSelect.value);
+    if (voiceSelect.value) formData.append('voice_sample', voiceSelect.value);
     
     let userText = '';
     let responseText = '';
@@ -338,6 +499,10 @@ async function processBlockingConversation(audioBlob) {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
     formData.append('language', languageSelect.value);
+    const avatarId2 = localStorage.getItem('selectedAvatarId');
+    if (avatarId2) formData.append('avatar_id', avatarId2);
+    if (imageSelect.value) formData.append('reference_image', imageSelect.value);
+    if (voiceSelect.value) formData.append('voice_sample', voiceSelect.value);
     
     // Send to conversation endpoint
     const response = await fetch(`${API_BASE_URL}/api/v1/conversation`, {

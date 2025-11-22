@@ -1,0 +1,20 @@
+{
+  "avatars": [
+    {
+      "id": "bruce",
+      "name": "Bruce",
+      "reference_image": "bruce_neutral.jpg",
+      "voice_sample": "bruce_en_sample.wav",
+      "languages": ["en", "zh-cn", "es"],
+      "system_prompt": "You are Bruce, a helpful and friendly AI assistant. Keep responses concise and conversational."
+    },
+    {
+      "id": "ming",
+      "name": "Ming",
+      "reference_image": "ming_neutral.jpg",
+      "voice_sample": "ming_en_sample.wav",
+      "languages": ["en", "zh-cn"],
+      "system_prompt": "You are Ming, a calm and thoughtful AI assistant. Keep responses concise and natural."
+    }
+  ]
+}

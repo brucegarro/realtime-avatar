@@ -171,6 +171,8 @@ Be natural, warm, and engaging in your communication style."""
         chunk_index: int,
         job_id: str,
         language: str = "en",
+        reference_image: Optional[str] = None,
+        voice_sample: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate a single video chunk from text.
@@ -194,8 +196,8 @@ Be natural, warm, and engaging in your communication style."""
             result = await self.phase1_pipeline.generate(
                 text=text_chunk,
                 language=language,
-                reference_image=self.reference_image,
-                voice_sample=self.reference_audio,
+                reference_image=reference_image or self.reference_image,
+                voice_sample=voice_sample or self.reference_audio,
                 job_id=chunk_id,
             )
             
@@ -217,6 +219,9 @@ Be natural, warm, and engaging in your communication style."""
         conversation_history: Optional[List[Dict[str, str]]] = None,
         job_id: Optional[str] = None,
         language: str = "en",
+        reference_image: Optional[str] = None,
+        voice_sample: Optional[str] = None,
+        system_prompt: Optional[str] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream conversation processing with progressive chunk generation.
@@ -281,13 +286,13 @@ Be natural, warm, and engaging in your communication style."""
                 if conversation_history:
                     response_text = self.llm_model.generate_with_history(
                         messages=conversation_history,
-                        system_prompt=self.system_prompt,
+                        system_prompt=system_prompt or self.system_prompt,
                         max_new_tokens=150,
                     )
                 else:
                     response_text = self.llm_model.generate_response(
                         prompt=user_text,
-                        system_prompt=self.system_prompt,
+                        system_prompt=system_prompt or self.system_prompt,
                         max_new_tokens=150,
                     )
                 fallback = False
@@ -322,6 +327,8 @@ Be natural, warm, and engaging in your communication style."""
                     chunk_index=i,
                     job_id=job_id,
                     language=language,
+                    reference_image=reference_image,
+                    voice_sample=voice_sample,
                 )
                 
                 # Yield immediately after generation completes

@@ -59,10 +59,27 @@
                     </section>
 
                     <!-- Settings (Optional) -->
-                    <section class="settings-section">
-                        <details>
-                            <summary>⚙️ Settings</summary>
+                <section class="settings-section">
+                    <details>
+                        <summary>⚙️ Settings</summary>
                             <div class="settings-content">
+                                <label>
+                                    <span>Avatar:</span>
+                                    <select id="avatarSelect"></select>
+                                </label>
+                                <label>
+                                    <span>Avatar Image:</span>
+                                    <select id="imageSelect"></select>
+                                </label>
+                                <label>
+                                    <span>Voice Sample:</span>
+                                    <select id="voiceSelect"></select>
+                                </label>
+                                <label>
+                                    <span>Backend URL:</span>
+                                    <input id="apiBaseUrlInput" type="text" placeholder="http://localhost:8000" />
+                                </label>
+                                <button id="saveApiBtn" class="clear-btn" style="margin-top:8px">Save Backend URL</button>
                                 <label>
                                     <span>Language:</span>
                                     <select id="languageSelect">
@@ -107,6 +124,6 @@
         </footer>
     </div>
 
-    <script src="app.js?v=20251119-5"></script>
+    <script src="app.js?v=20251122-1"></script>
 </body>
 </html>

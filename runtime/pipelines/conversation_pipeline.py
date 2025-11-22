@@ -143,6 +143,7 @@ Be natural, warm, and engaging in your communication style."""
         user_message: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
         max_tokens: int = 150,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate LLM response to user message.
@@ -171,16 +172,17 @@ Be natural, warm, and engaging in your communication style."""
 
         logger.info(f"Generating LLM response for: '{user_message[:100]}...'")
 
+        prompt_to_use = system_prompt or self.system_prompt
         if conversation_history:
             response = self.llm_model.generate_with_history(
                 messages=conversation_history,
-                system_prompt=self.system_prompt,
+                system_prompt=prompt_to_use,
                 max_new_tokens=max_tokens,
             )
         else:
             response = self.llm_model.generate_response(
                 prompt=user_message,
-                system_prompt=self.system_prompt,
+                system_prompt=prompt_to_use,
                 max_new_tokens=max_tokens,
             )
 
@@ -197,6 +199,8 @@ Be natural, warm, and engaging in your communication style."""
         text: str,
         output_name: str,
         language: str = "en",
+        reference_image: Optional[str] = None,
+        voice_sample: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate avatar video from text using TTS + Video pipeline.
@@ -221,8 +225,8 @@ Be natural, warm, and engaging in your communication style."""
         result = await self.phase1_pipeline.generate(
             text=text,
             language=language,
-            reference_image=self.reference_image,
-            voice_sample=self.reference_audio,
+            reference_image=reference_image or self.reference_image,
+            voice_sample=voice_sample or self.reference_audio,
             job_id=output_name,
         )
 
@@ -237,6 +241,9 @@ Be natural, warm, and engaging in your communication style."""
         conversation_history: Optional[List[Dict[str, str]]] = None,
         output_name: Optional[str] = None,
         language: str = "en",
+        reference_image: Optional[str] = None,
+        voice_sample: Optional[str] = None,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Full conversation pipeline: Audio → ASR → LLM → TTS → Video.
@@ -268,7 +275,8 @@ Be natural, warm, and engaging in your communication style."""
         llm_result = self.generate_response(
             user_message=user_text,
             conversation_history=conversation_history,
-        )
+            system_prompt=system_prompt,
+            )
         response_text = llm_result["response"]
 
         # Step 3: Generate avatar video
@@ -279,6 +287,8 @@ Be natural, warm, and engaging in your communication style."""
             text=response_text,
             output_name=output_name,
             language=language,
+            reference_image=reference_image,
+            voice_sample=voice_sample,
         )
 
         # Compile results

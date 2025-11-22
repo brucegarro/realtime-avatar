@@ -12,7 +12,7 @@ services:
       - "8001:8001"
     volumes:
       # Share assets with host and other services
-      - ./runtime/assets:/app/assets:ro
+      - ./assets:/app/assets:ro
       # Model cache for downloads
       - model-cache:/root/.cache
       # Shared output directory
@@ -54,7 +54,7 @@ services:
       # Mount source code for hot reload (dev mode) - writable for model downloads
       - ./runtime:/app/runtime
       # Share assets
-      - ./runtime/assets:/app/assets:ro
+      - ./assets:/app/assets:ro
       # Shared output with GPU service
       - gpu-output:/tmp/gpu-service-output:ro
       # Local output directory
