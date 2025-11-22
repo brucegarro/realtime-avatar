@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     gpu_service_url: str = os.getenv("GPU_SERVICE_URL", "http://host.docker.internal:8001")
     use_external_gpu_service: bool = os.getenv("USE_EXTERNAL_GPU_SERVICE", "true").lower() == "true"
     
+    # Gemini LLM settings (replaces local Qwen)
+    use_gemini_llm: bool = os.getenv("USE_GEMINI_LLM", "true").lower() == "true"
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    gemini_project: str = os.getenv("GEMINI_PROJECT", "realtime-avatar-bg")
+    gemini_location: str = os.getenv("GEMINI_LOCATION", "us-central1")
+    
     # Performance settings (adjust based on mode)
     @property
     def video_resolution(self) -> tuple[int, int]:

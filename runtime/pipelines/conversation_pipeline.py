@@ -11,7 +11,9 @@ import asyncio
 
 from models.asr import ASRModel
 from models.llm import LLMModel
+from models.llm_gemini import GeminiClient
 from pipelines.phase1_script import Phase1Pipeline
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ class ConversationPipeline:
         # Models (lazy loaded)
         self.asr_model: Optional[ASRModel] = None
         self.llm_model: Optional[LLMModel] = None
+        self.gemini_client: Optional[GeminiClient] = None
         self.phase1_pipeline: Optional[Phase1Pipeline] = None  # For TTS + Video
 
         # System prompt for conversational LLM
@@ -75,15 +78,30 @@ Be natural, warm, and engaging in your communication style."""
             self.asr_model = ASRModel(device=self.device, compute_type=compute_type)
             self.asr_model.initialize()
 
-        # Initialize LLM (optional - skip if it fails)
-        if self.llm_model is None:
-            try:
-                logger.info("Loading LLM model (Qwen-2.5-7B)...")
-                self.llm_model = LLMModel()  # LLM on CPU (default)
-                self.llm_model.initialize()
-            except Exception as e:
-                logger.warning(f"Failed to load LLM, will use fallback responses: {e}")
-                self.llm_model = None  # Will use fallback in generate_response()
+        # Initialize LLM (Gemini API or local Qwen)
+        if settings.use_gemini_llm:
+            if self.gemini_client is None:
+                try:
+                    logger.info(f"Initializing Gemini LLM: {settings.gemini_model}")
+                    self.gemini_client = GeminiClient(
+                        model_name=settings.gemini_model,
+                        project_id=settings.gemini_project,
+                        location=settings.gemini_location
+                    )
+                    self.gemini_client.initialize()
+                except Exception as e:
+                    logger.warning(f"Failed to load Gemini, will use fallback: {e}")
+                    self.gemini_client = None
+        else:
+            # Use local Qwen model
+            if self.llm_model is None:
+                try:
+                    logger.info("Loading LLM model (Qwen-2.5-7B)...")
+                    self.llm_model = LLMModel()
+                    self.llm_model.initialize()
+                except Exception as e:
+                    logger.warning(f"Failed to load LLM, will use fallback responses: {e}")
+                    self.llm_model = None
 
         # Note: TTS and Video models are loaded on-demand by phase1_script.run_pipeline()
 
@@ -157,10 +175,12 @@ Be natural, warm, and engaging in your communication style."""
         """
         start_time = time.time()
         
-        # Fallback if LLM failed to load
-        if self.llm_model is None:
-            logger.info(f"Using fallback response (LLM not available) for: '{user_message[:100]}...'")
-            # Simple echoing fallback - just repeat what user said
+        # Check which LLM to use (Gemini or local)
+        llm_available = self.gemini_client or self.llm_model
+        
+        # Fallback if no LLM available
+        if not llm_available:
+            logger.info(f"Using fallback response (no LLM available) for: '{user_message[:100]}...'")
             response = user_message
             result = {
                 "response": response,
@@ -171,15 +191,30 @@ Be natural, warm, and engaging in your communication style."""
 
         logger.info(f"Generating LLM response for: '{user_message[:100]}...'")
 
-        if conversation_history:
-            response = self.llm_model.generate_with_history(
-                messages=conversation_history,
-                system_prompt=self.system_prompt,
-                max_new_tokens=max_tokens,
-            )
+        # Use Gemini if available, otherwise use local Qwen
+        if self.gemini_client:
+            if conversation_history:
+                response = self.gemini_client.generate_with_history(
+                    prompt=user_message,
+                    conversation_history=conversation_history,
+                    max_tokens=max_tokens,
+                )
+            else:
+                response = self.gemini_client.generate_response(
+                    prompt=user_message,
+                    max_tokens=max_tokens,
+                )
         else:
-            response = self.llm_model.generate_response(
-                prompt=user_message,
+            # Use local LLM
+            if conversation_history:
+                response = self.llm_model.generate_with_history(
+                    messages=conversation_history,
+                    system_prompt=self.system_prompt,
+                    max_new_tokens=max_tokens,
+                )
+            else:
+                response = self.llm_model.generate_response(
+                    prompt=user_message,
                 system_prompt=self.system_prompt,
                 max_new_tokens=max_tokens,
             )
