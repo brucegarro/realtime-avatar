@@ -6,6 +6,7 @@ Generates and streams video chunks as they're produced for lower perceived laten
 import logging
 import time
 import asyncio
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any, List, AsyncGenerator
 import re
@@ -17,6 +18,61 @@ from pipelines.phase1_script import Phase1Pipeline
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+
+async def ensure_video_fully_written(video_path: str, max_wait: float = 3.0) -> bool:
+    """
+    Wait for video file to be fully written with stable size and fsync.
+    
+    This prevents race conditions where the video file exists but isn't fully flushed to disk,
+    causing the video endpoint to serve partial/corrupted files.
+    
+    Args:
+        video_path: Absolute path to video file
+        max_wait: Maximum time to wait in seconds
+        
+    Returns:
+        True if file is ready, False if timeout
+    """
+    wait_start = time.time()
+    
+    # Wait for file to exist
+    while not os.path.exists(video_path):
+        if time.time() - wait_start > max_wait:
+            logger.warning(f"[FSYNC] Timeout waiting for file to exist: {video_path}")
+            return False
+        await asyncio.sleep(0.05)  # 50ms check interval
+    
+    # Wait for stable file size (check twice 100ms apart)
+    prev_size = -1
+    curr_size = os.path.getsize(video_path)
+    stable_checks = 0
+    required_stable_checks = 2  # File size must be stable for 2 checks
+    
+    while stable_checks < required_stable_checks:
+        if time.time() - wait_start > max_wait:
+            logger.warning(f"[FSYNC] Timeout waiting for stable size: {video_path} (curr_size={curr_size})")
+            return False
+        
+        await asyncio.sleep(0.1)  # 100ms between checks
+        prev_size = curr_size
+        curr_size = os.path.getsize(video_path)
+        
+        if prev_size == curr_size:
+            stable_checks += 1
+        else:
+            stable_checks = 0  # Reset if size changed
+    
+    # Force fsync to ensure file is on disk
+    try:
+        with open(video_path, 'rb') as f:
+            os.fsync(f.fileno())
+    except Exception as e:
+        logger.warning(f"[FSYNC] fsync failed for {video_path}: {e}")
+    
+    wait_time = time.time() - wait_start
+    logger.info(f"[FSYNC] File ready: {os.path.basename(video_path)} (waited {wait_time:.3f}s, size={curr_size}, stable_checks={required_stable_checks})")
+    return True
 
 
 class StreamingConversationPipeline:
@@ -222,7 +278,19 @@ Be natural, warm, and engaging in your communication style."""
             result["chunk_time"] = chunk_time
             result["text_chunk"] = text_chunk
             
-            logger.info(f"[{chunk_id}] Chunk generated in {chunk_time:.2f}s")
+            # Ensure video file is fully written to disk before returning
+            video_path = result.get("video_path")
+            if video_path:
+                fsync_start = time.time()
+                file_ready = await ensure_video_fully_written(video_path, max_wait=3.0)
+                fsync_time = time.time() - fsync_start
+                
+                if not file_ready:
+                    logger.warning(f"[{chunk_id}] Video file sync timeout after {fsync_time:.3f}s: {video_path}")
+                else:
+                    logger.info(f"[{chunk_id}] Video file verified (fsync took {fsync_time:.3f}s)")
+            
+            logger.info(f"[{chunk_id}] Chunk generated in {chunk_time:.2f}s (total with fsync: {time.time() - chunk_start:.2f}s)")
             return result
             
         except Exception as e:

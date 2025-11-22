@@ -49,6 +49,10 @@ phase1_pipeline: Optional[Phase1Pipeline] = None
 conversation_pipeline: Optional[ConversationPipeline] = None
 streaming_pipeline: Optional[StreamingConversationPipeline] = None
 
+# Global SSE sequence counter for debugging event ordering
+sse_sequence_counter = 0
+sse_sequence_lock = asyncio.Lock()
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -265,44 +269,77 @@ async def generate_video(request: ScriptRequest, background_tasks: BackgroundTas
 @app.get("/api/v1/videos/{filename}")
 @app.head("/api/v1/videos/{filename}")
 async def get_video(filename: str):
-    """Serve generated video file with CORS headers using async streaming"""
+    """Serve generated video file with CORS headers and detailed timing logs"""
     request_start = time.time()
-    logger.info(f"[VIDEO] Request received for: {filename}")
+    logger.info(f"[VIDEO] === REQUEST START === {filename} at t={request_start:.3f}")
     
     # Check GPU service output directory first (for hybrid mode)
     gpu_output_path = os.path.join("/tmp/gpu-service-output", filename)
     if os.path.exists(gpu_output_path):
         video_path = gpu_output_path
+        logger.info(f"[VIDEO] Found in GPU output: {gpu_output_path}")
     else:
         # Fallback to regular output directory
         video_path = os.path.join(settings.output_dir, filename)
         if not os.path.exists(video_path):
-            logger.error(f"[VIDEO] File not found: {filename}")
+            logger.error(f"[VIDEO] File not found: {filename} (checked GPU output and {settings.output_dir})")
             raise HTTPException(status_code=404, detail="Video not found")
+        logger.info(f"[VIDEO] Found in output dir: {video_path}")
     
-    # Get file size for headers
-    file_size = os.path.getsize(video_path)
-    logger.info(f"[VIDEO] Streaming {filename} ({file_size} bytes)")
+    # Get file metadata
+    file_stat = os.stat(video_path)
+    file_size = file_stat.st_size
+    file_mtime = file_stat.st_mtime
+    file_age = request_start - file_mtime
+    
+    logger.info(f"[VIDEO] File metadata: size={file_size} bytes, age={file_age:.3f}s, mtime={file_mtime:.3f}")
+    logger.info(f"[VIDEO] Time to file check: {(time.time() - request_start)*1000:.1f}ms")
     
     # Async generator to stream file in chunks (doesn't block event loop!)
     async def file_stream():
         chunk_size = 65536  # 64KB chunks
         bytes_sent = 0
+        first_chunk_time = None
+        chunk_count = 0
         
         # Use asyncio.to_thread to avoid blocking on file I/O
         def read_chunk(f, size):
             return f.read(size)
         
+        stream_start = time.time()
+        logger.info(f"[VIDEO] Starting file stream at t={stream_start:.3f}")
+        
         with open(video_path, "rb") as f:
             while True:
+                chunk_read_start = time.time()
                 chunk = await asyncio.to_thread(read_chunk, f, chunk_size)
                 if not chunk:
                     break
+                
+                chunk_count += 1
                 bytes_sent += len(chunk)
+                
+                # Log first chunk (TTFB)
+                if first_chunk_time is None:
+                    first_chunk_time = time.time()
+                    ttfb = (first_chunk_time - request_start) * 1000
+                    logger.info(f"[VIDEO] TTFB (first chunk): {ttfb:.1f}ms, chunk_size={len(chunk)}")
+                
                 yield chunk
         
         elapsed = time.time() - request_start
-        logger.info(f"[VIDEO] Completed streaming {filename}: {bytes_sent} bytes in {elapsed:.2f}s")
+        throughput_mbps = (bytes_sent * 8 / 1024 / 1024) / elapsed if elapsed > 0 else 0
+        logger.info(f"[VIDEO] === COMPLETE === {filename}: {bytes_sent}/{file_size} bytes in {elapsed:.3f}s ({throughput_mbps:.1f} Mbps, {chunk_count} chunks)")
+    
+    return StreamingResponse(
+        file_stream(),
+        media_type="video/mp4",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache",
+            "Content-Length": str(file_size),
+        }
+    )
     
     return StreamingResponse(
         file_stream(),
@@ -501,6 +538,7 @@ async def process_conversation_stream(
     
     async def event_generator():
         """Generate SSE events for each chunk"""
+        global sse_sequence_counter
         try:
             # Process conversation with streaming
             async for event in streaming_pipeline.process_conversation_streaming(
@@ -513,12 +551,19 @@ async def process_conversation_stream(
                 event_type = event["type"]
                 event_data = event["data"]
                 
+                # Add sequence number for debugging event ordering
+                async with sse_sequence_lock:
+                    sse_sequence_counter += 1
+                    event_seq = sse_sequence_counter
+                event_data["seq"] = event_seq
+                event_data["server_timestamp"] = time.time()
+                
                 # Add video URL for video chunks
                 if event_type == "video_chunk":
                     chunk_index = event_data.get("chunk_index", "?")
                     chunk_time = event_data.get("chunk_time", 0)
                     video_path = event_data.get("video_path")
-                    logger.info(f"[PERF] Chunk {chunk_index} ready to send (generated in {chunk_time:.2f}s)")
+                    logger.info(f"[SSE] seq={event_seq} Chunk {chunk_index} ready to send (generated in {chunk_time:.2f}s)")
                     
                     if video_path:
                         # Quick file existence check (max 1s wait)
@@ -538,11 +583,13 @@ async def process_conversation_stream(
                         
                         video_filename = os.path.basename(video_path)
                         event_data["video_url"] = f"/api/v1/videos/{video_filename}"
-                        logger.info(f"[PERF] Chunk {chunk_index} sending SSE: {video_filename}")
+                        file_size = os.path.getsize(video_path)
+                        file_age = time.time() - os.path.getmtime(video_path)
+                        logger.info(f"[SSE] seq={event_seq} Chunk {chunk_index} sending: {video_filename} (size={file_size}, age={file_age:.3f}s)")
                 
                 # Send SSE event with explicit flush
                 send_time = time.time()
-                logger.info(f"[SSE] About to yield {event_type} event (chunk {event_data.get('chunk_index', '?')})")
+                logger.info(f"[SSE] seq={event_seq} Yielding {event_type} event (chunk {event_data.get('chunk_index', '?')}) at t={send_time:.3f}")
                 yield f"event: {event_type}\n"
                 yield f"data: {json.dumps(event_data)}\n\n"
                 
@@ -552,8 +599,8 @@ async def process_conversation_stream(
                 
                 if event_type == "video_chunk":
                     chunk_index = event_data.get("chunk_index", "?")
-                    logger.info(f"[PERF] Chunk {chunk_index} SSE event sent at t={send_time:.2f}")
-                    logger.info(f"[SSE] Chunk {chunk_index} SSE flushed, continuing to next chunk")
+                    flush_time = time.time() - send_time
+                    logger.info(f"[SSE] seq={event_seq} Chunk {chunk_index} flushed in {flush_time*1000:.1f}ms, continuing")
                 
         except Exception as e:
             logger.error(f"[{job_id}] Streaming conversation failed: {e}", exc_info=True)
