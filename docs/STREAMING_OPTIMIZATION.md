@@ -80,6 +80,35 @@ def split_into_sentences(self, text: str, max_chars: int = 120) -> List[str]:
 3. **Word-boundary splitting** - Maintains natural speech flow
 4. **Abbreviation handling** - Preserves "Mr.", "D.C.", "U.S." etc.
 
+### Adaptive First-Chunk Buffering
+
+**Strategy:**
+```python
+# BUFFERING STRATEGY: Combine first chunks to reach ~120 chars
+if len(chunks) >= 2:
+    combined_first = chunks[0]
+    chunks_combined = 1
+    while chunks_combined < len(chunks) and len(combined_first) < 120:
+        next_chunk = chunks[chunks_combined]
+        if len(combined_first) + len(next_chunk) + 1 <= 125:  # Hard limit
+            combined_first += ' ' + next_chunk
+            chunks_combined += 1
+        else:
+            break
+```
+
+**Why This Matters:**
+- Gives pipeline time to generate chunks 1-2 while chunk 0 plays
+- Prevents waiting after first chunk finishes
+- Hard limit (125 chars) keeps TTFF fast
+- Remaining chunks stay at 120 chars for consistency
+
+**Design Philosophy:**
+- Prioritize TTFF speed over perfect smoothness
+- Accept brief waits between chunks (handled by wait loop)
+- Tight character control ensures predictable timing
+- Balance: Fast enough to engage, long enough to buffer
+
 ### Frontend Playback Loop Enhancement
 
 **Wait-for-Chunks Logic:**
@@ -154,34 +183,39 @@ User Experience: ✅ Excellent
 
 ### Chunk Size Tuning
 
-**Current Setting: 120 characters**
-- Video duration: ~8-10s
-- Generation time: ~12-18s
-- Trade-off: Balanced
+**Current Setting: 120 characters (base) + Adaptive First-Chunk**
+- Video duration: ~8-10s per chunk
+- Generation time: ~12-18s per chunk
+- First chunk: Combines up to 125 chars for buffering
+- Trade-off: Fast TTFF with consistent chunk sizes
 
 **Alternative Configurations:**
 
 | max_chars | Video Duration | TTFF Goal | Use Case |
 |-----------|---------------|-----------|----------|
-| 80 | ~5-7s | <10s | Fast TTFF priority |
+| 80 | ~5-7s | <10s | Very fast TTFF priority |
 | 120 | ~8-10s | <20s | Balanced (current) |
+| 125 (first chunk limit) | ~8-10s | <10s | Fast + buffering |
 | 150 | ~10-12s | <25s | Fewer chunks |
 | 200 | ~15-20s | <30s | Long buffering |
 
 ### Tuning Guidelines
 
 **For faster TTFF:**
-- Reduce `max_chars` to 80-100
-- Trade-off: More chunks, more potential gaps
+- Reduce first chunk hard limit to 100-120 chars
+- Keep base chunks at 120 chars
+- Trade-off: Less buffer time, possible brief waits
 
 **For smoother playback:**
-- Increase `max_chars` to 150-200
-- Trade-off: Longer TTFF, fewer but longer chunks
+- Increase first chunk hard limit to 150-200 chars
+- Increase base chunks to 150 chars
+- Trade-off: Longer TTFF, better buffering
 
-**Current choice (120):**
-- Sweet spot for perceived performance
-- Fast enough to engage user
-- Long enough to buffer next chunk
+**Current choice (120 base, 125 first chunk):**
+- Optimized for fast TTFF (<10s goal)
+- Tight control on first chunk prevents delay
+- Wait loop handles gaps between chunks gracefully
+- Prioritizes responsiveness over perfect smoothness
 
 ## Production Metrics
 
@@ -232,18 +266,21 @@ User Experience: ✅ Excellent
 2. **Size limits essential:** Without limits, chunks grow uncontrollably
 3. **Balance is key:** Too small = stuttering, too large = slow TTFF
 4. **Word boundaries:** Never split mid-word for natural speech
+5. **Buffering strategy:** First chunk needs special handling to give pipeline time
 
 ### Streaming Playback
 1. **Don't exit early:** Wait for stream completion flag
 2. **Polling is acceptable:** 100ms checks are imperceptible to users
 3. **HTTP/2 is critical:** Multiplexing eliminates connection bottlenecks
 4. **Measure everything:** Detailed logging reveals optimization opportunities
+5. **Wait loop safety net:** Makes aggressive chunking strategies viable
 
 ### Performance Trade-offs
-1. **TTFF vs. Smoothness:** Can't optimize both perfectly
+1. **TTFF vs. Smoothness:** Can't optimize both perfectly - chose TTFF speed
 2. **Chunk count vs. Generation:** More chunks = more overhead
 3. **Network vs. Compute:** HTTP/2 fixed network, chunking addresses compute
 4. **User perception:** 8-10s chunks feel smooth, <5s feels choppy
+5. **Buffering philosophy:** Tight first chunk + wait loop better than large first chunk
 
 ## Future Improvements
 
@@ -267,7 +304,11 @@ The combination of HTTP/2 migration and intelligent chunking transformed the str
 - **Before:** 9s delays, stuttering, incomplete playback
 - **After:** <0.2s loads, smooth playback, 100% completion
 
-These optimizations are production-ready and provide excellent user experience. The 120-character chunk size offers the best balance between fast TTFF and smooth continuous playback.
+The adaptive first-chunk buffering strategy (120 char target, 125 char hard limit) provides optimal balance between fast TTFF and smooth playback. This aggressive approach prioritizes getting video on screen quickly while the wait loop handles any gaps between subsequent chunks gracefully.
+
+**Key Achievement:** Fast, responsive user experience that feels snappy without sacrificing continuity.
+
+These optimizations are production-ready and provide excellent user experience.
 
 ## Related Documentation
 

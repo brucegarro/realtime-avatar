@@ -239,10 +239,34 @@ Be natural, warm, and engaging in your communication style."""
         # Filter out empty chunks and very short ones (< 3 words)
         chunks = [c for c in chunks if len(c.split()) >= 3]
         
+        # BUFFERING STRATEGY: Combine first chunks to reach ~120 chars
+        # This gives pipeline time to build buffer while first video plays
+        if len(chunks) >= 2:
+            combined_first = chunks[0]
+            chunks_combined = 1
+            
+            # Keep adding chunks until we reach ~120 chars
+            while chunks_combined < len(chunks) and len(combined_first) < 120:
+                next_chunk = chunks[chunks_combined]
+                if len(combined_first) + len(next_chunk) + 1 <= 125:  # +1 for space, 125 hard limit
+                    combined_first += ' ' + next_chunk
+                    chunks_combined += 1
+                else:
+                    break
+            
+            # Replace first N chunks with combined version
+            if chunks_combined > 1:
+                chunks = [combined_first] + chunks[chunks_combined:]
+                logger.info(f"BUFFERING: Combined first {chunks_combined} chunks into one ({len(combined_first)} chars)")
+        
         # Enforce max character limit by splitting long chunks
+        # First chunk already combined above, remaining chunks use 120 char limit
         final_chunks = []
-        for chunk in chunks:
-            if len(chunk) <= max_chars:
+        for idx, chunk in enumerate(chunks):
+            # First chunk was already combined to ~120 chars, keep as-is if reasonable
+            if idx == 0 and len(chunk) <= 125:
+                final_chunks.append(chunk)
+            elif len(chunk) <= max_chars:
                 final_chunks.append(chunk)
             else:
                 # Split long chunk at word boundaries
@@ -265,7 +289,12 @@ Be natural, warm, and engaging in your communication style."""
                 if current_chunk:
                     final_chunks.append(' '.join(current_chunk))
         
-        logger.info(f"Split text into {len(final_chunks)} chunks: {[f'{c[:40]}... ({len(c)} chars)' for c in final_chunks]}")
+        # Log chunks with buffer indication
+        chunk_info = []
+        for i, c in enumerate(final_chunks):
+            label = "BUFFER" if i == 0 else "NORMAL"
+            chunk_info.append(f'[{label}] "{c[:40]}..." ({len(c)} chars)')
+        logger.info(f"Split text into {len(final_chunks)} chunks: {chunk_info}")
         return final_chunks
 
     async def generate_chunk(
