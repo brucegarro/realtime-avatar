@@ -5,6 +5,18 @@
 services:
   gpu-service:
     # Remove GPU device requirements entirely - use CPU/MPS instead
-    deploy: null
+    deploy:
+      resources:
+        reservations:
+          devices: []
+    # Ensure CPU path (no CUDA) when running locally
+    environment:
+      - USE_CUDA=false
 
+  runtime:
+    # Point runtime to native GPU service on host
+    environment:
+      - GPU_SERVICE_URL=http://host.docker.internal:8001
+    # Remove dependency on containerized gpu-service
+    depends_on: null
 

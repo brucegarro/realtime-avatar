@@ -207,6 +207,7 @@ async function processStreamingConversation(audioBlob) {
     
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let sseReaderForClosing = reader; // Store reference for closing SSE before video load
     
     let buffer = '';
     

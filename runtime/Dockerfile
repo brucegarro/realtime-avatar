@@ -25,8 +25,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
 # Install packages one by one to see what succeeds
-# Core web framework
-RUN pip install --no-cache-dir fastapi==0.109.0 uvicorn[standard]==0.27.0 pydantic==2.5.3 pydantic-settings==2.1.0
+# Core web framework - HTTP/2 enabled via hypercorn
+RUN pip install --no-cache-dir fastapi==0.109.0 hypercorn[h2]==0.16.0 pydantic==2.5.3 pydantic-settings==2.1.0
 
 # Gemini LLM dependencies
 RUN pip install --no-cache-dir google-cloud-aiplatform>=1.38.0 google-generativeai>=0.3.0
@@ -101,10 +101,8 @@ WORKDIR /app/runtime
 EXPOSE 8000
 
 # Optimize uvicorn for better static file serving and SSE streaming
-CMD ["python", "-m", "uvicorn", "app:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--timeout-keep-alive", "75", \
-     "--limit-concurrency", "100", \
-     "--backlog", "2048", \
-     "--no-access-log"]
+CMD ["python", "-m", "hypercorn", "app:app", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--keep-alive", "75", \
+     "--backlog", "2048"]
