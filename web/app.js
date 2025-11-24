@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://34.26.174.48:8000';
+const API_BASE_URL = 'http://35.237.112.191:8000';
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
