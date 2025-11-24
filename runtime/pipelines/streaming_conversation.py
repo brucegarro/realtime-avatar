@@ -174,13 +174,15 @@ Be natural, warm, and engaging in your communication style."""
         elapsed = time.time() - start_time
         logger.info(f"Streaming pipeline initialized in {elapsed:.2f}s")
 
-    def split_into_sentences(self, text: str) -> List[str]:
+    def split_into_sentences(self, text: str, max_chars: int = 120) -> List[str]:
         """
         Split text into sentence chunks for streaming.
         Handles common abbreviations like D.C., Mr., Dr., etc.
+        Splits on periods, semicolons, and enforces max character limit.
         
         Args:
             text: Text to split
+            max_chars: Maximum characters per chunk (default 120 for ~8-10s video)
             
         Returns:
             List of sentence strings
@@ -210,8 +212,9 @@ Be natural, warm, and engaging in your communication style."""
                 protected_text = protected_text.replace(abbr, temp)
                 replacements[temp] = abbr
         
-        # Split on sentence boundaries (.!?) followed by space or end
-        sentences = re.split(r'([.!?]+(?:\s+|$))', protected_text)
+        # Split on sentence boundaries (.!?;) followed by space or end
+        # Semicolons are included to handle poetry and complex prose
+        sentences = re.split(r'([.!?;]+(?:\s+|$))', protected_text)
         
         # Rejoin sentences with their punctuation
         chunks = []
@@ -236,8 +239,34 @@ Be natural, warm, and engaging in your communication style."""
         # Filter out empty chunks and very short ones (< 3 words)
         chunks = [c for c in chunks if len(c.split()) >= 3]
         
-        logger.info(f"Split text into {len(chunks)} chunks: {[c[:40] + '...' for c in chunks]}")
-        return chunks
+        # Enforce max character limit by splitting long chunks
+        final_chunks = []
+        for chunk in chunks:
+            if len(chunk) <= max_chars:
+                final_chunks.append(chunk)
+            else:
+                # Split long chunk at word boundaries
+                words = chunk.split()
+                current_chunk = []
+                current_length = 0
+                
+                for word in words:
+                    word_length = len(word) + 1  # +1 for space
+                    if current_length + word_length > max_chars and current_chunk:
+                        # Flush current chunk
+                        final_chunks.append(' '.join(current_chunk))
+                        current_chunk = [word]
+                        current_length = len(word)
+                    else:
+                        current_chunk.append(word)
+                        current_length += word_length
+                
+                # Add remaining words
+                if current_chunk:
+                    final_chunks.append(' '.join(current_chunk))
+        
+        logger.info(f"Split text into {len(final_chunks)} chunks: {[f'{c[:40]}... ({len(c)} chars)' for c in final_chunks]}")
+        return final_chunks
 
     async def generate_chunk(
         self,

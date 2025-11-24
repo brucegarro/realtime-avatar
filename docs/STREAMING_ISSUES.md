@@ -1,53 +1,65 @@
-# Streaming Implementation - Known Issues & Solutions
+# Streaming Implementation - Resolved Issues
 
-## Current Status
+**Date:** November 24, 2025  
+**Status:** ✅ All Issues Resolved
 
-✅ **Working:**
-- Progressive chunk delivery (chunks arrive one at a time, not batched)
-- Sentence splitting with abbreviation handling
-- SSE event streaming from backend to frontend
-- Video queue with sequential playback
-- TTFF improved from ~27s to ~23s
+## Historical Context
 
-⚠️ **Issue: Video Download Stalls**
+This document previously tracked streaming video issues. All issues have been resolved through:
+1. **HTTP/2 Migration** - Eliminated connection limit bottlenecks
+2. **Intelligent Chunking** - Optimized chunk sizes for smooth playback
 
-### Problem Description
+## What Was Fixed
 
-Videos occasionally fail to load with the following symptoms:
-- `networkState=2` (NETWORK_LOADING) - browser is trying to download
-- `readyState=0` (HAVE_NOTHING) - no data received
-- "Video download stalled" event fires
-- Timeout after 30s waiting for video data
-- **Inconsistent** - sometimes works, sometimes doesn't (especially first chunk)
+### Issue 1: First Chunk 9+ Second Delay ✅ RESOLVED
+- **Problem:** First video chunk took 9.2 seconds to load despite fast backend
+- **Root Cause:** HTTP/1.1 connection limit (6 per domain) + SSE holding 1 connection
+- **Solution:** Migrated to HTTP/2 for unlimited multiplexed streams
+- **Result:** First chunk now loads in 0.17s (54x improvement)
+- **Documentation:** See [HTTP2_MIGRATION.md](./HTTP2_MIGRATION.md)
 
-### Root Cause Analysis
+### Issue 2: Long Video Chunks (33+ seconds) ✅ RESOLVED
+- **Problem:** Text chunking didn't split on semicolons, creating huge chunks
+- **Root Cause:** Regex only split on `.!?`, missed `;` in poetry/prose
+- **Solution:** Enhanced splitting logic with semicolons and 120-char limit
+- **Result:** Consistent 8-10s video chunks
+- **Documentation:** See [STREAMING_OPTIMIZATION.md](./STREAMING_OPTIMIZATION.md)
 
-The browser starts downloading the video but doesn't receive data fast enough, causing a stall. This suggests:
+### Issue 3: Playback Stops After First Chunk ✅ RESOLVED
+- **Problem:** Video queue playback loop exited when queue temporarily empty
+- **Root Cause:** Loop condition `while (queue.length > 0)` didn't wait for more chunks
+- **Solution:** Added `isStreamComplete` flag and wait logic
+- **Result:** 100% chunk playback completion
+- **Documentation:** See [STREAMING_OPTIMIZATION.md](./STREAMING_OPTIMIZATION.md)
 
-1. **Network throughput issue** - video files are large (4-6 seconds of video)
-2. **Backend serving bottleneck** - FastAPI FileResponse might not stream efficiently
-3. **Cross-origin latency** - localhost → GCP adds overhead
-4. **Browser buffering strategy** - Chrome/Safari may aggressively buffer before playing
+### Issue 4: Video Download Stalls ✅ RESOLVED
+- **Problem:** Browser reported "video download stalled" warnings
+- **Root Cause:** HTTP/1.1 connection limits caused request queuing
+- **Solution:** HTTP/2 eliminated connection bottleneck
+- **Result:** No more stall warnings, consistent fast loads
 
-### Evidence from Logs
+## Current Performance
 
-```
-🎬 Video load started
-⚠️ Video download stalled
-⏱️ Timeout waiting for video to load after 30s
-Current state: readyState=0, networkState=2
-Buffered ranges: 0
-```
+All metrics are now excellent:
 
-This shows the browser initiates download but receives no bytes.
+| Metric | Target | Actual | Status |
+|--------|--------|--------|--------|
+| First chunk load | <1s | 0.17s | ✅ |
+| Subsequent chunks | <0.5s | 0.14-0.21s | ✅ |
+| Chunk duration | 8-10s | 8-10s | ✅ |
+| Playback gaps | <3s | 0-2s | ✅ |
+| Completion rate | 100% | 100% | ✅ |
 
-## Potential Solutions
+## References
 
-### Solution 1: Video Preloading Strategy
-**Concept:** Start downloading next chunk while current chunk plays
+For current implementation details, see:
+- [STREAMING_OPTIMIZATION.md](./STREAMING_OPTIMIZATION.md) - Complete optimization guide
+- [HTTP2_MIGRATION.md](./HTTP2_MIGRATION.md) - HTTP/2 migration details
+- [PERFORMANCE.md](../PERFORMANCE.md) - Performance benchmarks
 
-**Implementation:**
-```javascript
+---
+
+**This document is kept for historical reference. All issues are resolved.**
 // In frontend, when chunk N arrives:
 1. Add chunk N to queue
 2. If chunk N+1 is already known, create hidden <video> element

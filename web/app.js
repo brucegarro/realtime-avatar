@@ -16,6 +16,7 @@ let isProcessing = false;
 let currentEventSource = null;
 let videoQueue = [];
 let isPlayingQueue = false;
+let isStreamComplete = false;
 
 // DOM Elements
 const recordBtn = document.getElementById('recordBtn');
@@ -195,6 +196,9 @@ async function processStreamingConversation(audioBlob) {
     let chunkCount = 0;
     const startTime = Date.now();
     
+    // Reset stream completion flag for new conversation
+    isStreamComplete = false;
+    
     // Upload audio and get streaming response
     const response = await fetch(`${API_BASE_URL}/api/v1/conversation/stream`, {
         method: 'POST',
@@ -308,6 +312,7 @@ async function processStreamingConversation(audioBlob) {
                     const totalTime = event.data.total_time;
                     updateStatus(`✅ Complete (${totalTime.toFixed(1)}s, ${chunkCount} chunks)`, 'ready');
                     console.log(`Stream complete: ${totalTime.toFixed(1)}s total, ${chunkCount} chunks`);
+                    isStreamComplete = true;
                     
                     // Stream already closed via reader.cancel() if needed
                     
@@ -418,7 +423,14 @@ async function playVideoQueue() {
     isPlayingQueue = true;
     console.log('▶️ Starting video queue playback...');
     
-    while (videoQueue.length > 0) {
+    while (videoQueue.length > 0 || !isStreamComplete) {
+        // If queue is empty but stream not complete, wait for next chunk
+        if (videoQueue.length === 0) {
+            console.log('⏳ Queue empty but stream not complete, waiting 100ms for next chunk...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+        }
+        
         // Sort queue by chunk index to ensure correct playback order
         videoQueue.sort((a, b) => a.index - b.index);
         
