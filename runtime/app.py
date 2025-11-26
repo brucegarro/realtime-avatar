@@ -4,7 +4,7 @@ Handles Phase 1: Script → Video generation
 Handles Phase 4: Interactive conversation with voice input
 Handles Phase 5: Streaming conversation with progressive video chunks
 """
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,6 +15,7 @@ import uuid
 import time
 from datetime import datetime
 import shutil
+import ffmpeg
 import json
 import asyncio
 
@@ -365,6 +366,19 @@ async def list_images():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/v1/avatars", response_model=dict)
+async def list_avatars():
+    try:
+        config_path = os.path.join(settings.assets_dir, "avatars.json")
+        if not os.path.exists(config_path):
+            return {"avatars": []}
+        with open(config_path, "r") as f:
+            data = json.load(f)
+        return {"avatars": data.get("avatars", [])}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/v1/assets/voice-samples", response_model=dict)
 async def list_voice_samples():
     """List available voice reference samples"""
@@ -388,14 +402,24 @@ async def transcribe_audio(audio: UploadFile = File(...), language: str = "en"):
     if not conversation_pipeline:
         raise HTTPException(status_code=503, detail="Conversation pipeline not initialized")
     
-    # Save uploaded audio to temp file
-    temp_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}.wav"
+    # Save uploaded audio to temp file (preserve original extension to avoid ffmpeg decode issues)
+    orig_ext = os.path.splitext(audio.filename or '')[1].lower() or '.webm'
+    safe_ext = orig_ext if orig_ext in ['.wav', '.webm', '.mp3', '.m4a'] else '.webm'
+    temp_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}{safe_ext}"
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(audio.file, f)
-        
-        # Transcribe
-        result = conversation_pipeline.transcribe(temp_path, language=language)
+
+        wav_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}.wav"
+        (
+            ffmpeg
+            .input(temp_path)
+            .output(wav_path, ar=16000, ac=1, format='wav')
+            .overwrite_output()
+            .run(quiet=True)
+        )
+
+        result = conversation_pipeline.transcribe(wav_path, language=language)
         
         return TranscribeResponse(
             text=result["text"],
@@ -408,9 +432,13 @@ async def transcribe_audio(audio: UploadFile = File(...), language: str = "en"):
         logger.error(f"Transcription failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
     finally:
-        # Clean up temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
+        try:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+        except Exception:
+            pass
 
 
 @app.post("/api/v1/chat", response_model=ChatResponse)
@@ -443,7 +471,10 @@ async def chat(request: ChatRequest):
 async def process_conversation(
     audio: UploadFile = File(...),
     language: str = "en",
-    conversation_history: Optional[str] = None,  # JSON string of history
+    conversation_history: Optional[str] = None,
+    reference_image: Optional[str] = Form(None),
+    voice_sample: Optional[str] = Form(None),
+    avatar_id: Optional[str] = Form(None),
 ):
     """
     Full conversation pipeline: Audio → ASR → LLM → TTS → Video.
@@ -452,13 +483,25 @@ async def process_conversation(
     if not conversation_pipeline:
         raise HTTPException(status_code=503, detail="Conversation pipeline not initialized")
     
-    # Save uploaded audio
+    # Save uploaded audio (preserve original extension)
     job_id = f"conversation_{uuid.uuid4().hex[:8]}"
-    temp_path = f"/tmp/audio_uploads/{job_id}.wav"
+    os.makedirs("/tmp/audio_uploads", exist_ok=True)
+    orig_ext = os.path.splitext(audio.filename or '')[1].lower() or '.webm'
+    safe_ext = orig_ext if orig_ext in ['.wav', '.webm', '.mp3', '.m4a'] else '.webm'
+    temp_path = f"/tmp/audio_uploads/{job_id}{safe_ext}"
     
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(audio.file, f)
+
+        wav_path = f"/tmp/audio_uploads/{uuid.uuid4().hex}.wav"
+        (
+            ffmpeg
+            .input(temp_path)
+            .output(wav_path, ar=16000, ac=1, format='wav')
+            .overwrite_output()
+            .run(quiet=True)
+        )
         
         # Parse conversation history if provided
         history = None
@@ -470,11 +513,31 @@ async def process_conversation(
                 logger.warning("Invalid conversation history JSON, ignoring")
         
         # Process full conversation
+        # Resolve avatar overrides
+        system_prompt_override = None
+        if avatar_id:
+            try:
+                config_path = os.path.join(settings.assets_dir, "avatars.json")
+                if os.path.exists(config_path):
+                    with open(config_path, "r") as f:
+                        avatars = json.load(f).get("avatars", [])
+                    for a in avatars:
+                        if a.get("id") == avatar_id:
+                            reference_image = reference_image or a.get("reference_image")
+                            voice_sample = voice_sample or a.get("voice_sample")
+                            system_prompt_override = a.get("system_prompt")
+                            break
+            except Exception:
+                pass
+
         result = await conversation_pipeline.process_conversation(
-            audio_path=temp_path,
+            audio_path=wav_path,
             conversation_history=history,
             output_name=job_id,
             language=language,
+            reference_image=reference_image,
+            voice_sample=voice_sample,
+            system_prompt=system_prompt_override,
         )
         
         # Get video URL
@@ -492,6 +555,8 @@ async def process_conversation(
                 "llm_time": result["llm_response"]["llm_time"],
                 "generation_time": result["avatar_video"]["total_generation_time"],
                 "language": language,
+                "reference_image": result["avatar_video"].get("reference_image"),
+                "voice_sample": voice_sample,
             },
         )
         
@@ -499,9 +564,13 @@ async def process_conversation(
         logger.error(f"[{job_id}] Conversation processing failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Conversation failed: {str(e)}")
     finally:
-        # Clean up temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
+        try:
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+        except Exception:
+            pass
 
 
 @app.post("/api/v1/conversation/stream")
@@ -509,6 +578,9 @@ async def process_conversation_stream(
     audio: UploadFile = File(...),
     language: str = "en",
     conversation_history: Optional[str] = None,
+    reference_image: Optional[str] = Form(None),
+    voice_sample: Optional[str] = Form(None),
+    avatar_id: Optional[str] = Form(None),
 ):
     """
     Streaming conversation pipeline: Audio → ASR → LLM → TTS + Video chunks.
@@ -521,7 +593,9 @@ async def process_conversation_stream(
     
     # Save uploaded audio BEFORE creating generator
     job_id = f"stream_{uuid.uuid4().hex[:8]}"
-    temp_path = f"/tmp/audio_uploads/{job_id}.wav"
+    orig_ext = os.path.splitext(audio.filename or '')[1].lower() or '.webm'
+    safe_ext = orig_ext if orig_ext in ['.wav', '.webm', '.mp3', '.m4a'] else '.webm'
+    temp_path = f"/tmp/audio_uploads/{job_id}{safe_ext}"
     os.makedirs("/tmp/audio_uploads", exist_ok=True)
     
     # Save audio synchronously before yielding
@@ -541,11 +615,31 @@ async def process_conversation_stream(
         global sse_sequence_counter
         try:
             # Process conversation with streaming
+            # Resolve avatar overrides
+            system_prompt_override = None
+            if avatar_id:
+                try:
+                    config_path = os.path.join(settings.assets_dir, "avatars.json")
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            avatars = json.load(f).get("avatars", [])
+                        for a in avatars:
+                            if a.get("id") == avatar_id:
+                                reference_image = reference_image or a.get("reference_image")
+                                voice_sample = voice_sample or a.get("voice_sample")
+                                system_prompt_override = a.get("system_prompt")
+                                break
+                except Exception:
+                    pass
+
             async for event in streaming_pipeline.process_conversation_streaming(
                 audio_path=temp_path,
                 conversation_history=history,
                 job_id=job_id,
                 language=language,
+                reference_image=reference_image,
+                voice_sample=voice_sample,
+                system_prompt=system_prompt_override,
             ):
                 # Format as SSE event
                 event_type = event["type"]
