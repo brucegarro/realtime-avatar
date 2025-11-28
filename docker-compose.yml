@@ -4,11 +4,12 @@ services:
   fish-speech:
     image: fishaudio/fish-speech:latest
     container_name: realtime-avatar-fish-speech
+    command: ["--compile"]  # Enable torch.compile for faster inference (~0.3x RTF vs 3x without)
     ports:
-      - "8002:8080"
+      - "8002:7860"  # Gradio WebUI port
     volumes:
-      # Model cache for checkpoints
-      - fish-speech-cache:/root/.cache
+      # Mount checkpoints from host (required - downloaded via HuggingFace)
+      - ~/fish-speech-checkpoints/openaudio-s1-mini:/app/checkpoints/openaudio-s1-mini:ro
       # Share assets for reference audio
       - ./runtime/assets:/app/assets:ro
     environment:
@@ -23,11 +24,11 @@ services:
     networks:
       - avatar-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:7860/ | grep -q gradio || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # Fish Speech needs time to download models on first run
+      start_period: 300s  # Fish Speech needs ~4 min for torch.compile warmup
     profiles:
       - fish_speech  # Only started when fish_speech profile is active
 
@@ -57,7 +58,7 @@ services:
       - COQUI_TOS_AGREED=1  # Auto-accept TTS license
       - AVATAR_BACKEND=${AVATAR_BACKEND:-ditto}
       - TTS_BACKEND=${TTS_BACKEND:-xtts}  # fish_speech (fast) or xtts (stable, default)
-      - FISH_SPEECH_API_URL=http://fish-speech:8080  # For fish_speech backend
+      - FISH_SPEECH_URL=http://fish-speech:7860  # For fish_speech backend (Gradio API)
       - USE_CUDA=${USE_CUDA:-true}
     # Enable GPU access (for CUDA/NVIDIA)
     deploy:

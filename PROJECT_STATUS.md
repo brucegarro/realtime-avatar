@@ -1,11 +1,120 @@
 # Realtime Avatar - Project Status
 
 **Last Updated:** November 28, 2025  
-**Current Phase:** TTS Backend Abstraction Complete 🎤  
-**Performance:** ~500ms LLM response (100x faster than local Qwen)  
-**Deployment:** GCP g2-standard-4 with Gemini API integration ✅
+**Current Phase:** Fish Speech Production Ready ✅  
+**Performance:** ~500ms LLM, **~0.3-0.6x RTF TTS** (2-3x faster than XTTS!)  
+**Deployment:** GCP g2-standard-4 with Gemini API + Fish Speech ✅
 
-## 🎉 TTS Backend Abstraction (November 28, 2025)
+## 🎉 Fish Speech Production Deployment (November 28, 2025)
+
+### Major Win: 2-3x TTS Speedup! 🚀
+
+**Before (XTTS):** ~0.8-1.2x RTF (8-12s to generate 10s audio)  
+**After (Fish Speech):** ~0.3-0.6x RTF (3-6s to generate 10s audio)
+
+**User-perceived improvement:** Noticeably faster audio generation!
+
+### Architecture Changes
+
+**New TTS Pipeline:**
+```
+User Input → ASR → LLM (Gemini) → TTS (Fish Speech) → Avatar (Ditto)
+                                      ↓
+                              Gradio API (port 7860)
+                              OpenAudio S1-mini model
+                              torch.compile() enabled
+```
+
+**Docker Services (3 containers):**
+1. `runtime` (port 8000) - Orchestration, web API
+2. `gpu-service` (port 8001) - TTS client, Avatar generation (Ditto)
+3. `fish-speech` (port 8002→7860) - Fish Speech TTS server
+
+**Key Files Modified:**
+- `docker-compose.yml` - Added fish-speech service with `--compile` flag
+- `runtime/models/tts_fish.py` - Gradio API client for Fish Speech
+- `runtime/gpu_service.py` - Dynamic TTS backend selection
+
+### Fish Speech Setup Details
+
+**Model:** OpenAudio S1-mini (from HuggingFace, gated - requires token)
+- Location: `~/fish-speech-checkpoints/openaudio-s1-mini`
+- Size: ~1.7GB model weights
+
+**Docker Configuration:**
+```yaml
+fish-speech:
+  image: fishaudio/fish-speech:latest
+  command: ["--compile"]  # Critical for speed!
+  ports:
+    - "8002:7860"
+  volumes:
+    - ~/fish-speech-checkpoints/openaudio-s1-mini:/app/checkpoints/openaudio-s1-mini:ro
+  networks:
+    - avatar-network
+```
+
+**Warmup:** ~4 minutes (torch.compile JIT compilation)  
+**After warmup:** 63 tokens/sec (English), 51 tokens/sec (Chinese)
+
+### Performance Benchmarks
+
+| Metric | XTTS (old) | Fish Speech (new) | Improvement |
+|--------|-----------|-------------------|-------------|
+| RTF | 0.8-1.2x | 0.3-0.6x | **2-3x faster** |
+| 10s audio | 8-12s | 3-6s | **~6s saved** |
+| Warmup | ~15s | ~4 min | Tradeoff |
+| Voice cloning | ✅ | ✅ | Same |
+| Chinese quality | ⭐⭐⭐ | ⭐⭐⭐⭐ | Better |
+
+### Dynamic Scaling Considerations 🔄
+
+**Problem:** GPU instance (L4) is expensive. Plan to spin up/down dynamically when users visit.
+
+**Challenge:** Fish Speech `--compile` mode has **4-minute warmup** - unacceptable for cold starts.
+
+**Options Evaluated:**
+
+| Option | Cold Start | RTF | Recommendation |
+|--------|-----------|-----|----------------|
+| Fish Speech (no compile) | ~15s | 3x | Acceptable for dynamic |
+| Fish Speech (--compile) | 4 min | 0.3x | Only for persistent instances |
+| **Pre-compile cache** | ~30-60s | 0.3x | **Best hybrid approach** ⭐ |
+| XTTS | ~15s | 1x | Fallback option |
+
+**Preferred Solution: Pre-compile Cache (NOT YET IMPLEMENTED)**
+
+Save compiled Triton kernels to persistent storage:
+```bash
+# Environment variable to enable cache
+TORCHINDUCTOR_CACHE_DIR=/persistent/torch_cache
+
+# First run compiles and saves to cache
+# Subsequent runs load from cache (~30-60s vs 4 min)
+```
+
+**Requirements for pre-compile cache:**
+1. Persistent disk attached to GPU instance
+2. Mount cache directory in Fish Speech container
+3. Same GPU type required (L4) - kernels are GPU-specific
+4. Cache invalidated if PyTorch/model version changes
+
+**Implementation Priority:** Medium - implement when dynamic scaling is built
+
+### How to Switch TTS Backends
+
+```bash
+# Use Fish Speech (fast, new default)
+docker compose --profile fish_speech up -d
+TTS_BACKEND=fish_speech docker compose up -d gpu-service
+
+# Use XTTS (stable fallback)
+TTS_BACKEND=xtts docker compose up -d gpu-service
+```
+
+---
+
+## 🎤 TTS Backend Abstraction (November 28, 2025)
 
 ### Switchable TTS Backends - Complete ✅
 

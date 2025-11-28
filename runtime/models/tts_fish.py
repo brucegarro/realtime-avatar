@@ -1,17 +1,31 @@
 """
 Fish Speech TTS Model Handler
-Fast multilingual TTS with zero-shot voice cloning via HTTP API
+Fast multilingual TTS with zero-shot voice cloning via Gradio API
 
 Fish Speech is ~5-8x faster than XTTS with comparable quality.
 Supports: English, Chinese, Japanese, Korean, Spanish, French, German, Arabic
 
-This implementation uses Fish Speech's HTTP API server (run via Docker or CLI).
+This implementation uses Fish Speech's Gradio WebUI API (run via Docker).
 The API server should be started separately or as part of docker-compose.
 
 Usage:
     Set TTS_BACKEND=fish_speech in environment to enable.
-    Set FISH_SPEECH_API_URL to point to the Fish Speech API server.
+    Set FISH_SPEECH_URL to point to the Fish Speech Gradio server.
     Falls back to XTTS if Fish Speech API is unavailable.
+
+API Endpoint: POST /gradio_api/call/partial
+Parameters (in order):
+    - text: str
+    - reference_id: str (empty for uploaded reference)
+    - reference_audio: FileData (null if not cloning)
+    - reference_text: str (optional transcript)
+    - max_new_tokens: int (0 = no limit)
+    - chunk_length: int (300 default)
+    - top_p: float (0.8)
+    - repetition_penalty: float (1.1)
+    - temperature: float (0.8)
+    - seed: int (0 = random)
+    - use_memory_cache: str ("on" or "off")
 """
 import os
 import time
@@ -26,62 +40,51 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Fish Speech API URL - can run as separate container or use hosted API
-FISH_SPEECH_API_URL = os.getenv("FISH_SPEECH_API_URL", "http://localhost:8002")
+FISH_SPEECH_URL = os.getenv("FISH_SPEECH_URL", "http://localhost:8002")
 
 
 class FishSpeechModel:
     """
-    Fish Speech TTS model wrapper using HTTP API
+    Fish Speech TTS model wrapper using Gradio API
     
     Provides same interface as XTTSModel for drop-in replacement.
-    Communicates with Fish Speech API server for inference.
+    Communicates with Fish Speech Gradio server for inference.
     """
     
     def __init__(self):
-        self.api_url = FISH_SPEECH_API_URL
+        self.api_url = FISH_SPEECH_URL
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._initialized = False
         self._api_available = False
-        # Cache for reference audio (base64 encoded)
+        # Cache for uploaded reference audio
         self._speaker_cache = {}
         # HTTP client with longer timeout for TTS
-        self._client = httpx.Client(timeout=60.0)
+        self._client = httpx.Client(timeout=120.0)
         
     def initialize(self):
         """Check Fish Speech API availability"""
         if self._initialized:
             return
             
-        logger.info(f"Checking Fish Speech API at {self.api_url}...")
+        logger.info(f"Checking Fish Speech Gradio API at {self.api_url}...")
         start_time = time.time()
         
         try:
-            # Check if API is available
-            response = self._client.get(f"{self.api_url}/v1/health", timeout=5.0)
-            if response.status_code == 200:
+            # Check if Gradio API is available by hitting the root
+            response = self._client.get(f"{self.api_url}/", timeout=10.0)
+            if response.status_code == 200 and "gradio" in response.text.lower():
                 self._api_available = True
                 self._initialized = True
                 elapsed = time.time() - start_time
-                logger.info(f"Fish Speech API available in {elapsed:.2f}s")
+                logger.info(f"Fish Speech Gradio API available in {elapsed:.2f}s")
             else:
                 raise ConnectionError(f"Fish Speech API returned {response.status_code}")
                 
-        except httpx.ConnectError:
-            # API not available - try alternate health endpoint
-            try:
-                response = self._client.get(f"{self.api_url}/health", timeout=5.0)
-                if response.status_code == 200:
-                    self._api_available = True
-                    self._initialized = True
-                    logger.info("Fish Speech API available (alternate endpoint)")
-                else:
-                    raise
-            except Exception:
-                logger.warning(f"Fish Speech API not available at {self.api_url}")
-                logger.warning("Make sure Fish Speech server is running")
-                # Still mark as initialized but not available
-                self._initialized = True
-                self._api_available = False
+        except httpx.ConnectError as e:
+            logger.warning(f"Fish Speech API not available at {self.api_url}: {e}")
+            logger.warning("Make sure Fish Speech container is running")
+            self._initialized = True
+            self._api_available = False
                 
         except Exception as e:
             logger.error(f"Failed to connect to Fish Speech API: {e}")
@@ -94,34 +97,54 @@ class FishSpeechModel:
             self.initialize()
         return self._api_available
     
-    def _encode_audio_file(self, audio_path: str) -> Optional[str]:
+    def _upload_file_to_gradio(self, file_path: str) -> Optional[dict]:
         """
-        Encode audio file to base64 for API request.
-        Caches results to avoid re-encoding same files.
+        Upload a file to Gradio server and get FileData dict.
         
         Args:
-            audio_path: Path to audio file
+            file_path: Path to local audio file
             
         Returns:
-            Base64 encoded audio string
+            Gradio FileData dict or None
         """
-        if not audio_path or not os.path.exists(audio_path):
+        if not file_path or not os.path.exists(file_path):
             return None
             
         # Check cache
-        if audio_path in self._speaker_cache:
-            return self._speaker_cache[audio_path]
+        if file_path in self._speaker_cache:
+            return self._speaker_cache[file_path]
         
         try:
-            with open(audio_path, "rb") as f:
-                audio_bytes = f.read()
-            encoded = base64.b64encode(audio_bytes).decode("utf-8")
-            self._speaker_cache[audio_path] = encoded
-            logger.info(f"Encoded reference audio: {os.path.basename(audio_path)} ({len(audio_bytes)} bytes)")
-            return encoded
+            # Upload file to Gradio
+            with open(file_path, "rb") as f:
+                files = {"files": (os.path.basename(file_path), f, "audio/wav")}
+                response = self._client.post(
+                    f"{self.api_url}/gradio_api/upload",
+                    files=files
+                )
+            
+            if response.status_code == 200:
+                result = response.json()
+                # Gradio returns list of uploaded file paths
+                if result and len(result) > 0:
+                    uploaded_path = result[0]
+                    file_data = {
+                        "path": uploaded_path,
+                        "url": f"{self.api_url}/gradio_api/file={uploaded_path}",
+                        "orig_name": os.path.basename(file_path),
+                        "mime_type": "audio/wav",
+                        "is_stream": False,
+                        "meta": {"_type": "gradio.FileData"}
+                    }
+                    self._speaker_cache[file_path] = file_data
+                    logger.info(f"Uploaded reference audio to Gradio: {uploaded_path}")
+                    return file_data
+            
+            logger.warning(f"Failed to upload file to Gradio: {response.status_code}")
+            return None
             
         except Exception as e:
-            logger.warning(f"Failed to encode audio file: {e}")
+            logger.warning(f"Failed to upload audio file: {e}")
             return None
     
     def synthesize(
@@ -132,7 +155,7 @@ class FishSpeechModel:
         output_path: Optional[str] = None
     ) -> Tuple[str, float, float]:
         """
-        Synthesize speech from text using Fish Speech API.
+        Synthesize speech from text using Fish Speech Gradio API.
         
         Args:
             text: Text to synthesize
@@ -158,49 +181,78 @@ class FishSpeechModel:
                     f"tts_fish_{int(time.time() * 1000)}.wav"
                 )
             
-            # Prepare request payload
-            # Fish Speech API uses OpenAI-compatible format
-            payload = {
-                "input": text,
-                "voice": "default",  # Will be overridden by reference audio
-            }
-            
-            # Add reference audio for voice cloning
+            # Upload reference audio if provided
+            reference_file_data = None
             if speaker_wav:
-                reference_audio = self._encode_audio_file(speaker_wav)
-                if reference_audio:
-                    payload["reference_audio"] = reference_audio
+                reference_file_data = self._upload_file_to_gradio(speaker_wav)
             
             logger.info(f"Fish Speech synthesizing: lang={language}, text_len={len(text)}, voice_clone={speaker_wav is not None}")
             
-            # Call Fish Speech API
-            # Try OpenAI-compatible endpoint first
-            api_endpoint = f"{self.api_url}/v1/audio/speech"
+            # Gradio API parameters (in order):
+            # text, reference_id, reference_audio, reference_text,
+            # max_new_tokens, chunk_length, top_p, repetition_penalty,
+            # temperature, seed, use_memory_cache
+            payload = {
+                "data": [
+                    text,           # Input text
+                    "",             # Reference ID (empty = use uploaded)
+                    reference_file_data,  # Reference audio FileData
+                    "",             # Reference text (optional)
+                    0,              # max_new_tokens (0 = no limit)
+                    300,            # chunk_length
+                    0.8,            # top_p
+                    1.1,            # repetition_penalty
+                    0.8,            # temperature
+                    0,              # seed (0 = random)
+                    "on"            # use_memory_cache
+                ]
+            }
             
+            # Step 1: Submit the request
             response = self._client.post(
-                api_endpoint,
+                f"{self.api_url}/gradio_api/call/partial",
                 json=payload,
                 headers={"Content-Type": "application/json"}
             )
             
             if response.status_code != 200:
-                # Try alternate endpoint format
-                api_endpoint = f"{self.api_url}/tts"
-                response = self._client.post(
-                    api_endpoint,
-                    json={
-                        "text": text,
-                        "speaker_wav": speaker_wav,  # Some APIs accept path directly
-                        "language": language
-                    }
-                )
-            
-            if response.status_code != 200:
                 raise RuntimeError(f"Fish Speech API error: {response.status_code} - {response.text}")
             
-            # Save audio response
-            with open(output_path, "wb") as f:
-                f.write(response.content)
+            event_id = response.json().get("event_id")
+            if not event_id:
+                raise RuntimeError("No event_id returned from Fish Speech API")
+            
+            # Step 2: Poll for result
+            result_url = f"{self.api_url}/gradio_api/call/partial/{event_id}"
+            max_wait = 120  # seconds
+            poll_start = time.time()
+            
+            while time.time() - poll_start < max_wait:
+                result_response = self._client.get(result_url)
+                if result_response.status_code == 200:
+                    # Parse SSE response
+                    text_content = result_response.text
+                    if "event: complete" in text_content:
+                        # Extract data from SSE format
+                        import json
+                        for line in text_content.split("\n"):
+                            if line.startswith("data: "):
+                                data = json.loads(line[6:])
+                                if data and len(data) > 0 and data[0]:
+                                    audio_info = data[0]
+                                    audio_url = audio_info.get("url") or f"{self.api_url}/gradio_api/file={audio_info.get('path')}"
+                                    
+                                    # Download the audio file
+                                    audio_response = self._client.get(audio_url)
+                                    if audio_response.status_code == 200:
+                                        with open(output_path, "wb") as f:
+                                            f.write(audio_response.content)
+                                        break
+                        break
+                    elif "event: error" in text_content:
+                        raise RuntimeError(f"Fish Speech error: {text_content}")
+                
+                time.sleep(0.1)  # Poll every 100ms
             
             generation_time_ms = (time.time() - start_time) * 1000
             
