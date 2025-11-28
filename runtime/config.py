@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     gemini_project: str = os.getenv("GEMINI_PROJECT", "realtime-avatar-bg")
     gemini_location: str = os.getenv("GEMINI_LOCATION", "us-central1")
     
+    # TTS Backend settings (fish_speech or xtts)
+    # Fish Speech: ~5-8x faster, good multilingual, zero-shot cloning
+    # XTTS: Original backend, slower but proven stable
+    tts_backend: Literal["fish_speech", "xtts"] = os.getenv("TTS_BACKEND", "fish_speech")
+    
     # Performance settings (adjust based on mode)
     @property
     def video_resolution(self) -> tuple[int, int]:

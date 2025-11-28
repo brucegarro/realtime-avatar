@@ -1,4 +1,36 @@
 services:
+  # Fish Speech TTS Service (fast, multilingual)
+  # Only started if TTS_BACKEND=fish_speech
+  fish-speech:
+    image: fishaudio/fish-speech:latest
+    container_name: realtime-avatar-fish-speech
+    ports:
+      - "8002:8080"
+    volumes:
+      # Model cache for checkpoints
+      - fish-speech-cache:/root/.cache
+      # Share assets for reference audio
+      - ./runtime/assets:/app/assets:ro
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - avatar-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # Fish Speech needs time to download models on first run
+    profiles:
+      - fish_speech  # Only started when fish_speech profile is active
+
   # GPU Acceleration Service (TTS + Avatar generation)
   gpu-service:
     build:
@@ -24,6 +56,8 @@ services:
       - HOST=0.0.0.0
       - COQUI_TOS_AGREED=1  # Auto-accept TTS license
       - AVATAR_BACKEND=${AVATAR_BACKEND:-ditto}
+      - TTS_BACKEND=${TTS_BACKEND:-xtts}  # fish_speech (fast) or xtts (stable, default)
+      - FISH_SPEECH_API_URL=http://fish-speech:8080  # For fish_speech backend
       - USE_CUDA=${USE_CUDA:-true}
     # Enable GPU access (for CUDA/NVIDIA)
     deploy:
@@ -106,4 +140,6 @@ volumes:
   model-cache:
     driver: local
   gpu-output:
+    driver: local
+  fish-speech-cache:
     driver: local

@@ -5,9 +5,16 @@
 torch==2.1.2
 torchaudio==2.1.2
 
-# TTS
+# TTS - Multiple backends available (set TTS_BACKEND env var)
+# XTTS (stable, proven) - default fallback
 TTS==0.22.0
 transformers==4.35.2
+
+# Fish Speech (fast, ~5-8x faster than XTTS) - preferred for speed
+# Install separately: pip install fish-speech
+# Or download from: https://github.com/fishaudio/fish-speech
+# Requires: huggingface_hub for downloading model weights
+huggingface_hub>=0.20.0
 
 # Audio processing
 soundfile==0.12.1

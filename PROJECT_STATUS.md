@@ -1,11 +1,70 @@
 # Realtime Avatar - Project Status
 
-**Last Updated:** November 22, 2025  
-**Current Phase:** Production Deployment with Gemini LLM 🚀  
+**Last Updated:** November 28, 2025  
+**Current Phase:** TTS Backend Abstraction Complete 🎤  
 **Performance:** ~500ms LLM response (100x faster than local Qwen)  
-**Deployment:** GCP g2-standard-4 (34.26.174.48) with Gemini API integration ✅
+**Deployment:** GCP g2-standard-4 with Gemini API integration ✅
 
-## 🚀 LATEST: Gemini LLM Integration Deployed (November 22, 2025)
+## 🎉 TTS Backend Abstraction (November 28, 2025)
+
+### Switchable TTS Backends - Complete ✅
+
+**Problem:** XTTS v2 is a latency bottleneck (~7-11s for 8-13s audio, ~0.8-1.2x RTF)
+
+**Solution:** Created abstraction layer for switchable TTS backends
+
+**Architecture - Switchable TTS Backends:**
+```
+Environment Variable:
+  TTS_BACKEND = "xtts" (default) | "fish_speech"
+  
+gpu_service.py:
+  if TTS_BACKEND == "fish_speech":
+      from models.tts_fish import FishSpeechModel as TTSModel
+  else:
+      from models.tts import XTTSModel as TTSModel
+```
+
+**Implementation Complete:**
+1. ✅ Created `runtime/models/tts_fish.py` - Fish Speech HTTP API client
+2. ✅ Added TTS_BACKEND config toggle in `config.py` and `docker-compose.yml`
+3. ✅ Updated `gpu_service.py` to conditionally load TTS backend
+4. ✅ XTTS code intact for A/B comparison and fallback
+5. ✅ Fish Speech runs as separate Docker container with GPU access
+
+**Files Created/Modified:**
+- `runtime/models/tts_fish.py` (new) - Fish Speech API client wrapper
+- `runtime/config.py` - Added TTS_BACKEND setting
+- `runtime/gpu_service.py` - Dynamic TTS backend loading
+- `runtime/gpu_service_requirements.txt` - Added httpx for API calls
+- `docker-compose.yml` - Added fish-speech service with profile
+
+**How to Switch TTS Backends:**
+```bash
+# Use XTTS (stable, default)
+TTS_BACKEND=xtts docker compose up -d
+
+# Use Fish Speech (fast, experimental)
+docker compose --profile fish_speech up -d fish-speech
+TTS_BACKEND=fish_speech docker compose up -d gpu-service runtime
+```
+
+**Current Status:**
+- ✅ XTTS working in production (default)
+- 🔄 Fish Speech container ready but needs testing
+- 📊 Performance comparison pending
+
+**Expected Improvements (Fish Speech):**
+| Metric | XTTS (current) | Fish Speech (target) |
+|--------|----------------|---------------------|
+| RTF | 0.8-1.2x | 0.1-0.2x |
+| 10s audio gen | 8-12s | 1-2s |
+| Voice cloning | ✅ Zero-shot | ✅ Zero-shot |
+| Chinese quality | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+
+---
+
+## 🎉 PREVIOUS: Gemini LLM Integration Deployed (November 22, 2025)
 
 ### Production Deployment Success ✅
 

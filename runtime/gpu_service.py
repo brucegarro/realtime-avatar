@@ -4,14 +4,18 @@ GPU Acceleration Service
 Runs ML inference tasks on GPU (MPS locally, CUDA remotely)
 
 Supports:
-- TTS (XTTS-v2)
-- Video Generation (SadTalker)
+- TTS (Fish Speech or XTTS-v2, configurable via TTS_BACKEND env var)
+- Video Generation (SadTalker, LivePortrait, Ditto)
 - Lip Sync - future
 - Any GPU-accelerated ML task
 
 Deployment modes:
 - Local: Mac M3 with MPS acceleration
 - Remote: GCP GPU instance with CUDA
+
+TTS Backend Selection:
+- TTS_BACKEND=fish_speech (default): Fast inference, good multilingual
+- TTS_BACKEND=xtts: Original backend, proven stable
 """
 import os
 import sys
@@ -31,7 +35,21 @@ import uvicorn
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from models.tts import XTTSModel
+# TTS Backend selection - Fish Speech (fast) or XTTS (stable)
+TTS_BACKEND = os.getenv("TTS_BACKEND", "xtts")  # fish_speech or xtts
+
+if TTS_BACKEND == "fish_speech":
+    try:
+        from models.tts_fish import FishSpeechModel as TTSModel
+        logger_msg = "Using Fish Speech TTS backend (fast, multilingual via API)"
+    except ImportError:
+        from models.tts import XTTSModel as TTSModel
+        TTS_BACKEND = "xtts"  # Fallback
+        logger_msg = "Fish Speech not available, falling back to XTTS"
+else:
+    from models.tts import XTTSModel as TTSModel
+    logger_msg = "Using XTTS TTS backend (stable, proven)"
+
 # Conditionally import avatar models based on backend config
 AVATAR_BACKEND = os.getenv("AVATAR_BACKEND", "auto")  # auto, sadtalker, liveportrait, ditto
 
@@ -54,6 +72,9 @@ else:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Log TTS backend selection
+logger.info(logger_msg)
+
 app = FastAPI(
     title="GPU Acceleration Service",
     description="ML inference service for TTS, video generation, and other GPU tasks",
@@ -62,6 +83,7 @@ app = FastAPI(
 
 # Global models
 tts_model = None
+tts_backend_name = TTS_BACKEND  # Track which TTS backend is loaded
 avatar_model = None  # SadTalker or LivePortrait
 avatar_backend_name = None  # Track which backend is loaded
 # lipsync_model = None  # Future
@@ -144,12 +166,12 @@ async def startup():
     else:
         logger.warning("⚠️  No GPU detected - falling back to CPU (will be slow)")
     
-    # Initialize TTS model
-    logger.info("Loading XTTS-v2 model...")
-    tts_model = XTTSModel()
+    # Initialize TTS model (Fish Speech or XTTS based on TTS_BACKEND)
+    logger.info(f"Loading TTS model ({tts_backend_name})...")
+    tts_model = TTSModel()
     tts_model.device = device
     tts_model.initialize()
-    logger.info("✅ TTS model ready")
+    logger.info(f"✅ TTS model ready ({tts_backend_name})")
     
     # Select and initialize avatar backend
     avatar_backend_name = select_avatar_backend(device, AVATAR_BACKEND)
@@ -198,6 +220,7 @@ async def health():
     return {
         "status": "healthy" if tts_model and tts_model.is_ready() and avatar_model and avatar_model.is_ready() else "initializing",
         "device": device,
+        "tts_backend": tts_backend_name,
         "avatar_backend": avatar_backend_name,
         "capabilities": {
             "mps": torch.backends.mps.is_available(),
@@ -206,6 +229,7 @@ async def health():
         },
         "models": {
             "tts": tts_model.is_ready() if tts_model else False,
+            "tts_backend": tts_backend_name,
             "avatar": avatar_model.is_ready() if avatar_model else False,
             "avatar_backend": avatar_backend_name,
             "lipsync": False
