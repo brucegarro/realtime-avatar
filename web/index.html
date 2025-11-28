@@ -60,17 +60,17 @@
 
                     <!-- Settings (Optional) -->
                     <section class="settings-section">
-                        <details>
+                        <details open>
                             <summary>⚙️ Settings</summary>
                             <div class="settings-content">
-                                <label>
+                                <div class="language-setting">
                                     <span>Language:</span>
-                                    <select id="languageSelect">
-                                        <option value="en" selected>English</option>
-                                        <option value="zh">中文 (Chinese)</option>
-                                        <option value="es">Español (Spanish)</option>
-                                    </select>
-                                </label>
+                                    <div class="language-pills" id="languagePills">
+                                        <button type="button" class="language-pill active" data-lang="en">English</button>
+                                        <button type="button" class="language-pill" data-lang="zh">中文</button>
+                                        <button type="button" class="language-pill" data-lang="es">Español</button>
+                                    </div>
+                                </div>
                                 <label>
                                     <input type="checkbox" id="autoPlayCheckbox" checked>
                                     Auto-play avatar response

@@ -407,6 +407,42 @@ main {
     cursor: pointer;
 }
 
+/* Language Pills */
+.language-setting {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+}
+
+.language-pills {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.language-pill {
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--bg-color);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.language-pill:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.language-pill.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
 /* Footer */
 footer {
     text-align: center;

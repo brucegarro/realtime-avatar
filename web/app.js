@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://35.237.112.191:8000';
+const API_BASE_URL = 'http://35.196.226.14:8000';
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
@@ -26,9 +26,12 @@ const avatarVideo = document.getElementById('avatarVideo');
 const videoSource = document.getElementById('videoSource');
 const videoPlaceholder = document.getElementById('videoPlaceholder');
 const clearBtn = document.getElementById('clearBtn');
-const languageSelect = document.getElementById('languageSelect');
+const languagePills = document.getElementById('languagePills');
 const autoPlayCheckbox = document.getElementById('autoPlayCheckbox');
 const saveHistoryCheckbox = document.getElementById('saveHistoryCheckbox');
+
+// Current language selection
+let selectedLanguage = 'en';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -45,6 +48,18 @@ function setupEventListeners() {
     
     // Clear conversation
     clearBtn.addEventListener('click', clearConversation);
+    
+    // Language pill buttons
+    languagePills.addEventListener('click', (e) => {
+        if (e.target.classList.contains('language-pill')) {
+            // Update selection
+            languagePills.querySelectorAll('.language-pill').forEach(pill => {
+                pill.classList.remove('active');
+            });
+            e.target.classList.add('active');
+            selectedLanguage = e.target.dataset.lang;
+        }
+    });
     
     // Settings
     saveHistoryCheckbox.addEventListener('change', (e) => {
@@ -189,7 +204,7 @@ async function processRecording() {
 async function processStreamingConversation(audioBlob) {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
-    formData.append('language', languageSelect.value);
+    formData.append('language', selectedLanguage);
     
     let userText = '';
     let responseText = '';
@@ -337,7 +352,7 @@ async function processStreamingConversation(audioBlob) {
 async function processBlockingConversation(audioBlob) {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
-    formData.append('language', languageSelect.value);
+    formData.append('language', selectedLanguage);
     
     // Send to conversation endpoint
     const response = await fetch(`${API_BASE_URL}/api/v1/conversation`, {
