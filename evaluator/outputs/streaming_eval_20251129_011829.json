@@ -1,0 +1,222 @@
+{
+  "success": true,
+  "total_scenarios": 5,
+  "passed": 5,
+  "failed": 0,
+  "suite_time_s": 89.88672375679016,
+  "results": [
+    {
+      "scenario_id": "stream_en_01",
+      "scenario_name": "English Streaming",
+      "success": true,
+      "elapsed_s": 20.484893083572388,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1547.2862720489502,
+        "asr_language": "en",
+        "llm_time_ms": 816.7300224304199,
+        "ttff_ms": 12755.19609451294,
+        "total_chunks": 2,
+        "chunk_times_ms": [
+          9894.526720046997,
+          7450.153589248657
+        ],
+        "total_pipeline_ms": 20484.836101531982,
+        "video_generation_ms": 17344.680309295654,
+        "avg_chunk_time_ms": 8672.340154647827
+      },
+      "validations": {
+        "scenario_id": "stream_en_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Expected en, got en"
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 168"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 2"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "transcription": "If we want a stronger future, we",
+      "llm_response": "If we want a stronger future, we must invest in education, healthcare, and sustainable practices. These areas are crucial for building a resilient and thriving society."
+    },
+    {
+      "scenario_id": "stream_zh_01",
+      "scenario_name": "Chinese Streaming",
+      "success": true,
+      "elapsed_s": 16.688988208770752,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1607.1109771728516,
+        "asr_language": "zh",
+        "llm_time_ms": 708.9295387268066,
+        "ttff_ms": 16686.99622154236,
+        "total_chunks": 1,
+        "chunk_times_ms": [
+          13776.203393936157
+        ],
+        "total_pipeline_ms": 16688.798189163208,
+        "video_generation_ms": 13776.203393936157,
+        "avg_chunk_time_ms": 13776.203393936157
+      },
+      "validations": {
+        "scenario_id": "stream_zh_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Language matched: zh"
+          },
+          "chinese_script": {
+            "passed": true,
+            "detail": "Contains Chinese chars: True, text: \u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d..."
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 44"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 1"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "transcription": "\u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d...",
+      "llm_response": "\u6ca1\u5173\u7cfb\uff01\u4e2d\u6587\u5b66\u4e60\u662f\u4e00\u4e2a\u8fc7\u7a0b\uff0c\u6162\u6162\u6765\u5c31\u597d\u3002\u6709\u4ec0\u4e48\u6211\u53ef\u4ee5\u5e2e\u5fd9\u7684\u5417\uff1f\u6211\u5f88\u4e50\u610f\u89e3\u7b54\u4f60\u9047\u5230\u7684\u95ee\u9898\u3002"
+    },
+    {
+      "scenario_id": "stream_es_01",
+      "scenario_name": "Spanish Streaming",
+      "success": true,
+      "elapsed_s": 19.251309156417847,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1529.5443534851074,
+        "asr_language": "es",
+        "llm_time_ms": 614.0658855438232,
+        "ttff_ms": 14641.353845596313,
+        "total_chunks": 2,
+        "chunk_times_ms": [
+          11949.498176574707,
+          4416.79310798645
+        ],
+        "total_pipeline_ms": 19251.117706298828,
+        "video_generation_ms": 16366.291284561157,
+        "avg_chunk_time_ms": 8183.145642280579
+      },
+      "validations": {
+        "scenario_id": "stream_es_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Expected es, got es"
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 129"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 2"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "transcription": "es que espa\u00f1ol no es mi idioma nativo.",
+      "llm_response": "\u00a1No te preocupes! Estoy aqu\u00ed para ayudarte con tu espa\u00f1ol. Har\u00e9 lo posible para ser claro y conciso. \u00a1Adelante con tus preguntas!"
+    },
+    {
+      "scenario_id": "stream_latency_01",
+      "scenario_name": "Latency Baseline",
+      "success": true,
+      "elapsed_s": 14.641180276870728,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1415.0664806365967,
+        "asr_language": "en",
+        "llm_time_ms": 550.4376888275146,
+        "ttff_ms": 14639.63007926941,
+        "total_chunks": 1,
+        "chunk_times_ms": [
+          12207.775354385376
+        ],
+        "total_pipeline_ms": 14641.074180603027,
+        "video_generation_ms": 12207.775354385376,
+        "avg_chunk_time_ms": 12207.775354385376
+      },
+      "validations": {
+        "scenario_id": "stream_latency_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "ttff_baseline": {
+            "passed": true,
+            "detail": "TTFF: 14640ms (threshold: 15000ms)"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 1"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "transcription": "and Technology Innovation. Full stop.",
+      "llm_response": "Understood! I'm ready to assist you with any questions you have about Arts, Science, and Technology Innovation. How can I help you today?"
+    },
+    {
+      "scenario_id": "stream_codeswitch_zh_01",
+      "scenario_name": "Code Switch: Chinese Input",
+      "success": true,
+      "elapsed_s": 18.639764070510864,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1531.6333770751953,
+        "asr_language": "zh",
+        "llm_time_ms": 793.1272983551025,
+        "ttff_ms": 18598.673820495605,
+        "total_chunks": 1,
+        "chunk_times_ms": [
+          15766.600131988525
+        ],
+        "total_pipeline_ms": 18639.615774154663,
+        "video_generation_ms": 15766.600131988525,
+        "avg_chunk_time_ms": 15766.600131988525
+      },
+      "validations": {
+        "scenario_id": "stream_codeswitch_zh_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "chinese_script": {
+            "passed": true,
+            "detail": "Contains Chinese chars: True, text: \u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d..."
+          },
+          "no_romanization": {
+            "passed": true,
+            "detail": "Romanization check: PASS"
+          },
+          "llm_responds_chinese": {
+            "passed": true,
+            "detail": "LLM Chinese response: True"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "transcription": "\u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d...",
+      "llm_response": "\u6ca1\u5173\u7cfb\u5566\uff0c\u6211\u7406\u89e3\uff01\u8bed\u8a00\u5b66\u4e60\u9700\u8981\u65f6\u95f4\uff0c\u6162\u6162\u6765\u5c31\u597d\u3002\u6211\u4f1a\u5c3d\u529b\u7528\u7b80\u5355\u7684\u4e2d\u6587\u548c\u4f60\u4ea4\u6d41\uff0c\u6709\u4ec0\u4e48\u9700\u8981\u5e2e\u5fd9\u7684\u5c3d\u7ba1\u8bf4\uff01"
+    }
+  ],
+  "has_regressions": false
+}

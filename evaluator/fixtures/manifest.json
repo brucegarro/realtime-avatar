@@ -1,0 +1,39 @@
+{
+  "created_at": "2025-11-29",
+  "description": "Audio test fixtures extracted from Bruce's original recordings",
+  "fixtures": {
+    "bruce_en_01.wav": {
+      "source": "originals/bruce_speechy.m4a",
+      "start_s": 0,
+      "duration_s": 4,
+      "language": "en",
+      "description": "English speech sample"
+    },
+    "bruce_en_short.wav": {
+      "source": "originals/bruce_speechy.m4a",
+      "start_s": 5,
+      "duration_s": 3,
+      "language": "en",
+      "description": "Short English clip for latency testing"
+    },
+    "bruce_zh_01.wav": {
+      "source": "originals/bruce_mandarin.mp4",
+      "start_s": 2,
+      "duration_s": 4,
+      "language": "zh",
+      "description": "Chinese speech sample"
+    },
+    "bruce_es_01.wav": {
+      "source": "originals/bruce_spanish.mp4",
+      "start_s": 2,
+      "duration_s": 4,
+      "language": "es",
+      "description": "Spanish speech sample"
+    }
+  },
+  "format": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "format": "wav"
+  }
+}

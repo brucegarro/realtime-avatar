@@ -13,6 +13,9 @@ langdetect==1.0.9
 # Voice similarity (speaker embeddings)
 resemblyzer==0.1.1.dev0
 
+# ASR for TTS accuracy evaluation
+faster-whisper==1.0.0
+
 # Testing utilities
 pytest==7.4.3
 pytest-asyncio==0.21.1

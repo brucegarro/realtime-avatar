@@ -1,0 +1,74 @@
+{
+  "created_at": "2025-11-29T07:19:59.850842Z",
+  "description": "Auto-generated baseline",
+  "scenarios": {
+    "stream_en_01": {
+      "asr_time_ms": 1510.8728408813477,
+      "asr_language": "en",
+      "llm_time_ms": 729.4187545776367,
+      "ttff_ms": 10140.486001968384,
+      "total_chunks": 3,
+      "chunk_times_ms": [
+        7358.639478683472,
+        7817.261695861816,
+        5308.049201965332
+      ],
+      "total_pipeline_ms": 23658.41007232666,
+      "video_generation_ms": 20483.95037651062,
+      "avg_chunk_time_ms": 6827.983458836873
+    },
+    "stream_zh_01": {
+      "asr_time_ms": 1567.432165145874,
+      "asr_language": "zh",
+      "llm_time_ms": 540.7900810241699,
+      "ttff_ms": 13020.593881607056,
+      "total_chunks": 1,
+      "chunk_times_ms": [
+        10392.71879196167
+      ],
+      "total_pipeline_ms": 13021.283864974976,
+      "video_generation_ms": 10392.71879196167,
+      "avg_chunk_time_ms": 10392.71879196167
+    },
+    "stream_es_01": {
+      "asr_time_ms": 1500.666618347168,
+      "asr_language": "es",
+      "llm_time_ms": 622.9350566864014,
+      "ttff_ms": 11264.579057693481,
+      "total_chunks": 2,
+      "chunk_times_ms": [
+        8556.706428527832,
+        8011.223077774048
+      ],
+      "total_pipeline_ms": 19394.224882125854,
+      "video_generation_ms": 16567.92950630188,
+      "avg_chunk_time_ms": 8283.96475315094
+    },
+    "stream_latency_01": {
+      "asr_time_ms": 1419.3356037139893,
+      "asr_language": "en",
+      "llm_time_ms": 528.1598567962646,
+      "ttff_ms": 11915.357112884521,
+      "total_chunks": 1,
+      "chunk_times_ms": [
+        9491.462469100952
+      ],
+      "total_pipeline_ms": 11916.42689704895,
+      "video_generation_ms": 9491.462469100952,
+      "avg_chunk_time_ms": 9491.462469100952
+    },
+    "stream_codeswitch_zh_01": {
+      "asr_time_ms": 1561.3420009613037,
+      "asr_language": "zh",
+      "llm_time_ms": 628.0431747436523,
+      "ttff_ms": 17332.080841064453,
+      "total_chunks": 1,
+      "chunk_times_ms": [
+        14593.965768814087
+      ],
+      "total_pipeline_ms": 17333.967924118042,
+      "video_generation_ms": 14593.965768814087,
+      "avg_chunk_time_ms": 14593.965768814087
+    }
+  }
+}
