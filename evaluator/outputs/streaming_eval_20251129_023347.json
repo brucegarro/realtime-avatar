@@ -1,0 +1,429 @@
+{
+  "success": true,
+  "total_scenarios": 5,
+  "passed": 5,
+  "failed": 0,
+  "suite_time_s": 86.27460813522339,
+  "results": [
+    {
+      "scenario_id": "stream_en_01",
+      "scenario_name": "English Streaming",
+      "success": true,
+      "elapsed_s": 21.8940908908844,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1522.6304531097412,
+        "asr_language": "en",
+        "llm_time_ms": 685.0550174713135,
+        "ttff_ms": 10424.181938171387,
+        "total_chunks": 3,
+        "chunk_times_ms": [
+          7667.969465255737,
+          8305.821657180786,
+          2660.964250564575
+        ],
+        "total_pipeline_ms": 21894.0269947052,
+        "video_generation_ms": 18634.7553730011,
+        "avg_chunk_time_ms": 6211.585124333699
+      },
+      "validations": {
+        "scenario_id": "stream_en_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Expected en, got en"
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 170"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 3"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "baseline_comparison": {
+        "regressions": [],
+        "improvements": [],
+        "details": {
+          "asr_time_ms": {
+            "current": 1522.6304531097412,
+            "baseline": 1510.8728408813477,
+            "pct_change": 0.007781999854822268,
+            "threshold": 0.2
+          },
+          "llm_time_ms": {
+            "current": 685.0550174713135,
+            "baseline": 729.4187545776367,
+            "pct_change": -0.0608206696467678,
+            "threshold": 0.2
+          },
+          "ttff_ms": {
+            "current": 10424.181938171387,
+            "baseline": 10140.486001968384,
+            "pct_change": 0.02797656208469045,
+            "threshold": 0.3
+          },
+          "total_pipeline_ms": {
+            "current": 21894.0269947052,
+            "baseline": 23658.41007232666,
+            "pct_change": -0.07457741548259264,
+            "threshold": 0.2
+          },
+          "video_generation_ms": {
+            "current": 18634.7553730011,
+            "baseline": 20483.95037651062,
+            "pct_change": -0.0902753116229979,
+            "threshold": 0.2
+          }
+        },
+        "has_regressions": false
+      },
+      "transcription": "If we want a stronger future, we",
+      "llm_response": "If we want a stronger future, we should invest in education and healthcare. A healthy and educated population is essential for innovation and progress. What do you think?"
+    },
+    {
+      "scenario_id": "stream_zh_01",
+      "scenario_name": "Chinese Streaming",
+      "success": true,
+      "elapsed_s": 12.24189305305481,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1633.3765983581543,
+        "asr_language": "zh",
+        "llm_time_ms": 710.8538150787354,
+        "ttff_ms": 12239.291191101074,
+        "total_chunks": 1,
+        "chunk_times_ms": [
+          9357.171058654785
+        ],
+        "total_pipeline_ms": 12241.701126098633,
+        "video_generation_ms": 9357.171058654785,
+        "avg_chunk_time_ms": 9357.171058654785
+      },
+      "validations": {
+        "scenario_id": "stream_zh_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Language matched: zh"
+          },
+          "chinese_script": {
+            "passed": true,
+            "detail": "Contains Chinese chars: True, text: \u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d..."
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 25"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 1"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "baseline_comparison": {
+        "regressions": [
+          {
+            "metric": "llm_time_ms",
+            "current": 710.8538150787354,
+            "baseline": 540.7900810241699,
+            "pct_change": 0.31447273169746737
+          }
+        ],
+        "improvements": [],
+        "details": {
+          "asr_time_ms": {
+            "current": 1633.3765983581543,
+            "baseline": 1567.432165145874,
+            "pct_change": 0.0420716345361862,
+            "threshold": 0.2
+          },
+          "llm_time_ms": {
+            "current": 710.8538150787354,
+            "baseline": 540.7900810241699,
+            "pct_change": 0.31447273169746737,
+            "threshold": 0.2
+          },
+          "ttff_ms": {
+            "current": 12239.291191101074,
+            "baseline": 13020.593881607056,
+            "pct_change": -0.0600051501191242,
+            "threshold": 0.3
+          },
+          "total_pipeline_ms": {
+            "current": 12241.701126098633,
+            "baseline": 13021.283864974976,
+            "pct_change": -0.05986988279806163,
+            "threshold": 0.2
+          },
+          "video_generation_ms": {
+            "current": 9357.171058654785,
+            "baseline": 10392.71879196167,
+            "pct_change": -0.09964165816820111,
+            "threshold": 0.2
+          }
+        },
+        "has_regressions": true
+      },
+      "transcription": "\u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d...",
+      "llm_response": "\u6ca1\u5173\u7cfb\uff01\u80fd\u7528\u4e2d\u6587\u4ea4\u6d41\u5c31\u597d\u3002\u6709\u4ec0\u4e48\u6211\u53ef\u4ee5\u5e2e\u5fd9\u7684\u5417\uff1f\ud83d\ude0a"
+    },
+    {
+      "scenario_id": "stream_es_01",
+      "scenario_name": "Spanish Streaming",
+      "success": true,
+      "elapsed_s": 19.640703916549683,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1498.6920356750488,
+        "asr_language": "es",
+        "llm_time_ms": 620.9259033203125,
+        "ttff_ms": 11623.313903808594,
+        "total_chunks": 2,
+        "chunk_times_ms": [
+          8921.53000831604,
+          7855.443477630615
+        ],
+        "total_pipeline_ms": 19640.49005508423,
+        "video_generation_ms": 16776.973485946655,
+        "avg_chunk_time_ms": 8388.486742973328
+      },
+      "validations": {
+        "scenario_id": "stream_es_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "asr_language": {
+            "passed": true,
+            "detail": "Expected es, got es"
+          },
+          "has_response": {
+            "passed": true,
+            "detail": "Response length: 157"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 2"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "baseline_comparison": {
+        "regressions": [],
+        "improvements": [],
+        "details": {
+          "asr_time_ms": {
+            "current": 1498.6920356750488,
+            "baseline": 1500.666618347168,
+            "pct_change": -0.001315803688825932,
+            "threshold": 0.2
+          },
+          "llm_time_ms": {
+            "current": 620.9259033203125,
+            "baseline": 622.9350566864014,
+            "pct_change": -0.003225301489333771,
+            "threshold": 0.2
+          },
+          "ttff_ms": {
+            "current": 11623.313903808594,
+            "baseline": 11264.579057693481,
+            "pct_change": 0.03184627177613917,
+            "threshold": 0.3
+          },
+          "total_pipeline_ms": {
+            "current": 19640.49005508423,
+            "baseline": 19394.224882125854,
+            "pct_change": 0.012697861061997762,
+            "threshold": 0.2
+          },
+          "video_generation_ms": {
+            "current": 16776.973485946655,
+            "baseline": 16567.92950630188,
+            "pct_change": 0.012617387076958659,
+            "threshold": 0.2
+          }
+        },
+        "has_regressions": false
+      },
+      "transcription": "es que espa\u00f1ol no es mi idioma nativo.",
+      "llm_response": "\u00a1Hola! No te preocupes, har\u00e9 lo posible para ser claro y conciso en mis respuestas. Si necesitas que explique algo con m\u00e1s detalle, \u00a1no dudes en ped\u00edrmelo! \ud83d\ude0a"
+    },
+    {
+      "scenario_id": "stream_latency_01",
+      "scenario_name": "Latency Baseline",
+      "success": true,
+      "elapsed_s": 17.775393962860107,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1387.0079517364502,
+        "asr_language": "en",
+        "llm_time_ms": 587.7246856689453,
+        "ttff_ms": 11843.764305114746,
+        "total_chunks": 2,
+        "chunk_times_ms": [
+          9275.143146514893,
+          5720.939159393311
+        ],
+        "total_pipeline_ms": 17775.142192840576,
+        "video_generation_ms": 14996.082305908203,
+        "avg_chunk_time_ms": 7498.041152954102
+      },
+      "validations": {
+        "scenario_id": "stream_latency_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "ttff_baseline": {
+            "passed": true,
+            "detail": "TTFF: 11844ms (threshold: 15000ms)"
+          },
+          "has_video": {
+            "passed": true,
+            "detail": "Video chunks: 2"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "baseline_comparison": {
+        "regressions": [
+          {
+            "metric": "total_pipeline_ms",
+            "current": 17775.142192840576,
+            "baseline": 11916.42689704895,
+            "pct_change": 0.4916503366661453
+          },
+          {
+            "metric": "video_generation_ms",
+            "current": 14996.082305908203,
+            "baseline": 9491.462469100952,
+            "pct_change": 0.5799548651988357
+          }
+        ],
+        "improvements": [],
+        "details": {
+          "asr_time_ms": {
+            "current": 1387.0079517364502,
+            "baseline": 1419.3356037139893,
+            "pct_change": -0.022776608923884514,
+            "threshold": 0.2
+          },
+          "llm_time_ms": {
+            "current": 587.7246856689453,
+            "baseline": 528.1598567962646,
+            "pct_change": 0.11277803132178887,
+            "threshold": 0.2
+          },
+          "ttff_ms": {
+            "current": 11843.764305114746,
+            "baseline": 11915.357112884521,
+            "pct_change": -0.006008448348758209,
+            "threshold": 0.3
+          },
+          "total_pipeline_ms": {
+            "current": 17775.142192840576,
+            "baseline": 11916.42689704895,
+            "pct_change": 0.4916503366661453,
+            "threshold": 0.2
+          },
+          "video_generation_ms": {
+            "current": 14996.082305908203,
+            "baseline": 9491.462469100952,
+            "pct_change": 0.5799548651988357,
+            "threshold": 0.2
+          }
+        },
+        "has_regressions": true
+      },
+      "transcription": "and Technology Innovation. Full stop.",
+      "llm_response": "Understood! I'll keep my responses concise and conversational, and elaborate only when necessary. How can I help you with Technology Innovation today?"
+    },
+    {
+      "scenario_id": "stream_codeswitch_zh_01",
+      "scenario_name": "Code Switch: Chinese Input",
+      "success": true,
+      "elapsed_s": 14.540313005447388,
+      "error": null,
+      "metrics": {
+        "asr_time_ms": 1565.7098293304443,
+        "asr_language": "zh",
+        "llm_time_ms": 660.7997417449951,
+        "ttff_ms": 14539.127588272095,
+        "total_chunks": 1,
+        "chunk_times_ms": [
+          11730.932474136353
+        ],
+        "total_pipeline_ms": 14540.120840072632,
+        "video_generation_ms": 11730.932474136353,
+        "avg_chunk_time_ms": 11730.932474136353
+      },
+      "validations": {
+        "scenario_id": "stream_codeswitch_zh_01",
+        "passed": true,
+        "failures": [],
+        "details": {
+          "chinese_script": {
+            "passed": true,
+            "detail": "Contains Chinese chars: True, text: \u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d..."
+          },
+          "no_romanization": {
+            "passed": true,
+            "detail": "Romanization check: PASS"
+          },
+          "llm_responds_chinese": {
+            "passed": true,
+            "detail": "LLM Chinese response: True"
+          }
+        }
+      },
+      "all_validations_passed": true,
+      "baseline_comparison": {
+        "regressions": [],
+        "improvements": [],
+        "details": {
+          "asr_time_ms": {
+            "current": 1565.7098293304443,
+            "baseline": 1561.3420009613037,
+            "pct_change": 0.0027974834254451578,
+            "threshold": 0.2
+          },
+          "llm_time_ms": {
+            "current": 660.7997417449951,
+            "baseline": 628.0431747436523,
+            "pct_change": 0.052156552795455474,
+            "threshold": 0.2
+          },
+          "ttff_ms": {
+            "current": 14539.127588272095,
+            "baseline": 17332.080841064453,
+            "pct_change": -0.16114356253030426,
+            "threshold": 0.3
+          },
+          "total_pipeline_ms": {
+            "current": 14540.120840072632,
+            "baseline": 17333.967924118042,
+            "pct_change": -0.16117758474435173,
+            "threshold": 0.2
+          },
+          "video_generation_ms": {
+            "current": 11730.932474136353,
+            "baseline": 14593.965768814087,
+            "pct_change": -0.1961792524411537,
+            "threshold": 0.2
+          }
+        },
+        "has_regressions": false
+      },
+      "transcription": "\u5c31\u7b97\u8ddf\u5927\u5bb6\u8001\u5be6\u8aaa \u4e2d\u6587\u4e0d...",
+      "llm_response": "\u6ca1\u5173\u7cfb\uff01\u8bf4\u4e2d\u6587\u4e0d\u7528\u611f\u5230\u6709\u538b\u529b\uff0c\u5927\u5bb6\u90fd\u5f88\u53cb\u5584\u7684\u3002\u6709\u4ec0\u4e48\u9700\u8981\u5e2e\u5fd9\u7684\uff0c\u5c3d\u7ba1\u95ee\u6211\uff01"
+    }
+  ],
+  "has_regressions": true
+}

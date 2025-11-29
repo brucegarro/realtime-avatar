@@ -39,18 +39,18 @@ def get_language_prefix(language: str, user_text: str) -> str:
     wants_bilingual = any(kw in user_text.lower() for kw in bilingual_keywords)
     
     if mixed_input or wants_bilingual:
-        # Allow natural code-switching
+        # Allow natural code-switching - language instruction only
         prefixes = {
-            "zh": "[优先用中文回复，但可以适当切换语言]",
-            "es": "[Responde principalmente en español, pero puedes cambiar de idioma si es natural]",
-            "en": ""  # English is default, no prefix needed
+            "zh": "[用中文回复，可自然切换语言]",
+            "es": "[Responde en español, puedes cambiar de idioma naturalmente]",
+            "en": ""  # English default, no prefix needed
         }
     else:
-        # Strict single-language response
+        # Strict single-language - no length instructions (handled by system prompt)
         prefixes = {
-            "zh": "[请只用简体中文回复。简洁自然，2-4句话。不要加拼音或翻译。]",
-            "es": "[Responde solo en español. Sé conciso y natural, 2-4 oraciones.]",
-            "en": ""  # English is default, no prefix needed
+            "zh": "[只用简体中文回复，不要加拼音或翻译]",
+            "es": "[Responde solo en español]",
+            "en": ""  # English default, no prefix needed
         }
     
     return prefixes.get(language, "")
@@ -85,9 +85,9 @@ class GeminiClient:
         
         # System prompt for concise conversational responses
         self.system_instruction = """You are Bruce, a helpful and friendly AI assistant.
-Keep your responses concise (2-4 sentences) and conversational.
-Be natural, warm, and engaging in your communication style.
-Avoid long explanations unless specifically asked."""
+Be concise - respond naturally without padding or filler.
+Elaborate only when the question genuinely requires more detail.
+Be warm, engaging, and conversational."""
         
     def initialize(self):
         """Initialize Vertex AI and Gemini model"""

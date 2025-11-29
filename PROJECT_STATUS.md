@@ -1,9 +1,75 @@
 # Realtime Avatar - Project Status
 
-**Last Updated:** November 28, 2025  
-**Current Phase:** Fish Speech Production Ready ✅  
-**Performance:** ~500ms LLM, **~0.3-0.6x RTF TTS** (2-3x faster than XTTS!)  
+**Last Updated:** November 29, 2025  
+**Current Phase:** Streaming Eval Suite + LLM Optimization ✅  
+**Performance:** ~500ms LLM, **~0.3-0.6x RTF TTS**, **37% faster responses via prompt optimization**  
 **Deployment:** GCP g2-standard-4 with Gemini API + Fish Speech ✅
+
+## 🧪 Streaming Eval Suite & LLM Optimization (November 29, 2025)
+
+### New Eval Framework for Streaming Pipeline ✅
+
+Built comprehensive eval suite that tests the `/api/v1/conversation/stream` endpoint directly (same as frontend).
+
+**Key Features:**
+- SSE streaming client that parses server events
+- 5 test scenarios: English, Chinese, Spanish, latency baseline, code-switching
+- Audio fixtures from real Bruce recordings
+- Baseline comparison with regression detection (20-30% thresholds)
+- Language validation (Chinese script, no romanization, correct response language)
+
+**Files Created:**
+- `evaluator/run_streaming_eval.py` - Main eval runner (~300 lines)
+- `evaluator/clients/api_client.py` - SSE streaming client
+- `evaluator/metrics/streaming.py` - Metrics dataclass
+- `evaluator/scenarios/streaming_tests.py` - Test scenario definitions
+- `evaluator/baselines/streaming_baseline.json` - Baseline metrics
+- `evaluator/fixtures/bruce_*.wav` - Audio fixtures (EN, ZH, ES)
+
+**Running the Eval:**
+```bash
+cd evaluator
+RUNTIME_URL=http://<instance-ip>:8000 python3 run_streaming_eval.py
+```
+
+**Metrics Tracked:**
+- `asr_time_ms` - Whisper transcription time
+- `llm_time_ms` - Gemini response time
+- `ttff_ms` - Time to first video frame
+- `total_pipeline_ms` - End-to-end latency
+- `video_generation_ms` - Ditto avatar generation time
+
+### LLM Response Optimization: 37% Faster! 🚀
+
+**Problem:** Video generation was 89% of total latency, driven by LLM response length.
+
+**Solution:** Optimized Gemini prompts by separating concerns:
+1. **System instruction** handles conciseness (applies globally)
+2. **Language prefix** only specifies response language (no length instructions)
+
+**Prompt Changes (`runtime/models/llm_gemini.py`):**
+```python
+# System instruction (new)
+system_instruction = "Keep responses brief and conversational. Elaborate only when the question genuinely requires more detail."
+
+# Language prefix (simplified)
+# Chinese: "[请只用简体中文回复。不要加拼音或翻译。]"
+# Spanish: "[Responde solo en español.]"  
+# English: "" (no prefix needed)
+```
+
+**Performance Results:**
+| Scenario | Before | After | Improvement |
+|----------|--------|-------|-------------|
+| **Suite Total** | 92s | 57.8s | **-37%** |
+| English | 24.3s | 12.3s | **-49%** |
+| Chinese | 17.7s | 12.7s | **-28%** |
+| Spanish | 20.5s | 12.0s | **-41%** |
+| Code-switch | 17.3s | 9.1s | **-47%** |
+
+**Key Learning:** Sentence count instructions ("2-4 sentences") are arbitrary and language-dependent. A single conciseness instruction in the system prompt works better across all languages.
+
+---
 
 ## 🎉 Fish Speech Production Deployment (November 28, 2025)
 
