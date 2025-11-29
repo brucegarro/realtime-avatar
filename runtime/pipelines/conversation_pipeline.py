@@ -161,6 +161,7 @@ Be natural, warm, and engaging in your communication style."""
         user_message: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
         max_tokens: int = 150,
+        language: str = "en",
     ) -> Dict[str, Any]:
         """
         Generate LLM response to user message.
@@ -169,6 +170,7 @@ Be natural, warm, and engaging in your communication style."""
             user_message: User's input text
             conversation_history: Optional list of {'role': 'user'/'assistant', 'content': '...'}
             max_tokens: Maximum response length
+            language: Target response language (en, zh, es)
 
         Returns:
             Dict with 'response' text and timing info
@@ -198,11 +200,13 @@ Be natural, warm, and engaging in your communication style."""
                     prompt=user_message,
                     conversation_history=conversation_history,
                     max_tokens=max_tokens,
+                    language=language,
                 )
             else:
                 response = self.gemini_client.generate_response(
                     prompt=user_message,
                     max_tokens=max_tokens,
+                    language=language,
                 )
         else:
             # Use local LLM
@@ -303,6 +307,7 @@ Be natural, warm, and engaging in your communication style."""
         llm_result = self.generate_response(
             user_message=user_text,
             conversation_history=conversation_history,
+            language=language,
         )
         response_text = llm_result["response"]
 

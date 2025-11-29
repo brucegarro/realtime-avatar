@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://35.196.226.14:8000';
+const API_BASE_URL = 'http://34.74.34.221:8000';
 const USE_STREAMING = true; // Toggle streaming mode
 
 // State Management
@@ -205,6 +205,8 @@ async function processStreamingConversation(audioBlob) {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
     formData.append('language', selectedLanguage);
+    
+    console.log(`[DEBUG] Sending request with language: ${selectedLanguage}`);
     
     let userText = '';
     let responseText = '';

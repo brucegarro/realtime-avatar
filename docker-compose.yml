@@ -57,7 +57,7 @@ services:
       - HOST=0.0.0.0
       - COQUI_TOS_AGREED=1  # Auto-accept TTS license
       - AVATAR_BACKEND=${AVATAR_BACKEND:-ditto}
-      - TTS_BACKEND=${TTS_BACKEND:-xtts}  # fish_speech (fast) or xtts (stable, default)
+      - TTS_BACKEND=${TTS_BACKEND:-fish_speech}  # fish_speech (fast, default) or xtts (stable)
       - FISH_SPEECH_URL=http://fish-speech:7860  # For fish_speech backend (Gradio API)
       - USE_CUDA=${USE_CUDA:-true}
     # Enable GPU access (for CUDA/NVIDIA)

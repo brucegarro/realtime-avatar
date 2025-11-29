@@ -432,11 +432,13 @@ Be natural, warm, and engaging in your communication style."""
                             prompt=user_text,
                             conversation_history=conversation_history,
                             max_tokens=150,
+                            language=language,
                         )
                     else:
                         response_text = self.gemini_client.generate_response(
                             prompt=user_text,
                             max_tokens=150,
+                            language=language,
                         )
                     fallback = False
                 else:

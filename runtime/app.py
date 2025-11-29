@@ -4,7 +4,7 @@ Handles Phase 1: Script → Video generation
 Handles Phase 4: Interactive conversation with voice input
 Handles Phase 5: Streaming conversation with progressive video chunks
 """
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -507,8 +507,8 @@ async def process_conversation(
 @app.post("/api/v1/conversation/stream")
 async def process_conversation_stream(
     audio: UploadFile = File(...),
-    language: str = "en",
-    conversation_history: Optional[str] = None,
+    language: str = Form(default="en"),
+    conversation_history: Optional[str] = Form(default=None),
 ):
     """
     Streaming conversation pipeline: Audio → ASR → LLM → TTS + Video chunks.
@@ -516,6 +516,8 @@ async def process_conversation_stream(
     
     Returns Server-Sent Events (SSE) stream with chunks as they're generated.
     """
+    logger.info(f"[ENDPOINT] /api/v1/conversation/stream called with language={language}")
+    
     if not streaming_pipeline:
         raise HTTPException(status_code=503, detail="Streaming pipeline not initialized")
     

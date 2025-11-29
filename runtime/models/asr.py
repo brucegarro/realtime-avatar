@@ -149,12 +149,18 @@ class ASRModel:
         
         start_time = time.time()
         
+        # Log language parameter for debugging
+        logger.info(f"ASR transcribe called: language={language}, task={task}")
+        
         try:
             # Apply VAD if enabled
             if vad_filter and self.vad_model is not None:
                 audio_path = self._apply_vad(audio_path)
             
-            # Transcribe
+            # Transcribe with anti-hallucination settings
+            # - condition_on_previous_text=False prevents repetition loops
+            # - no_speech_threshold helps filter silence
+            # - compression_ratio_threshold catches repetitive hallucinations
             segments, info = self.model.transcribe(
                 audio_path,
                 language=language,
@@ -162,8 +168,14 @@ class ASRModel:
                 beam_size=beam_size,
                 best_of=best_of,
                 temperature=temperature,
-                vad_filter=vad_filter and self.vad_model is not None
+                vad_filter=vad_filter and self.vad_model is not None,
+                condition_on_previous_text=False,  # Prevents repetition hallucinations
+                no_speech_threshold=0.6,  # Filter low-confidence segments
+                compression_ratio_threshold=2.4,  # Catch repetitive text
             )
+            
+            # Log detected language vs requested
+            logger.info(f"ASR result: detected_lang={info.language}, probability={info.language_probability:.2f}")
             
             # Collect segments
             full_text = []
@@ -258,67 +270,6 @@ class ASRModel:
             
         except Exception as e:
             logger.error(f"Language detection failed: {e}")
-            raise
-
-        """Load faster-whisper model"""
-        if self._initialized:
-            return
-            
-        logger.info(f"Loading faster-whisper ({self.model_size})...")
-        
-        try:
-            from faster_whisper import WhisperModel
-            
-            # Load model (will download on first run)
-            self.model = WhisperModel(
-                self.model_size,
-                device="cpu",  # TODO: Use GPU in production
-                compute_type="int8"  # Quantized for speed
-            )
-            
-            self._initialized = True
-            logger.info(f"ASR model loaded: {self.model_size}")
-            
-        except Exception as e:
-            logger.error(f"Failed to load ASR model: {e}")
-            raise
-    
-    def is_ready(self) -> bool:
-        """Check if model is initialized"""
-        return self._initialized and self.model is not None
-    
-    def transcribe(
-        self,
-        audio_path: str,
-        language: Optional[str] = None
-    ) -> Tuple[str, str, float]:
-        """
-        Transcribe audio to text.
-        
-        Args:
-            audio_path: Path to audio file
-            language: Language hint (en, zh, es, etc.)
-            
-        Returns:
-            Tuple of (transcribed_text, detected_language, confidence)
-        """
-        if not self.is_ready():
-            self.initialize()
-        
-        try:
-            segments, info = self.model.transcribe(
-                audio_path,
-                language=language,
-                beam_size=5
-            )
-            
-            # Combine all segments
-            text = " ".join([segment.text for segment in segments])
-            
-            return text, info.language, info.language_probability
-            
-        except Exception as e:
-            logger.error(f"Transcription failed: {e}")
             raise
     
     def cleanup(self):

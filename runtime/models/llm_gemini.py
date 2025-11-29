@@ -11,6 +11,51 @@ import vertexai
 logger = logging.getLogger(__name__)
 
 
+def get_language_prefix(language: str, user_text: str) -> str:
+    """
+    Generate a language instruction prefix for the LLM.
+    
+    Allows code-switching if the user's query contains mixed languages
+    or explicitly requests it.
+    
+    Args:
+        language: UI-selected language code (en, zh, es)
+        user_text: The user's input text to check for mixed language signals
+        
+    Returns:
+        Language instruction prefix to prepend to the prompt
+    """
+    # Check if user query suggests code-switching is welcome
+    # (contains multiple scripts, asks for translation, or mixes languages)
+    has_chinese = any('\u4e00' <= c <= '\u9fff' for c in user_text)
+    has_english = any(c.isalpha() and ord(c) < 128 for c in user_text)
+    mixed_input = has_chinese and has_english
+    
+    # Translation/explanation keywords that suggest bilingual response is OK
+    bilingual_keywords = [
+        'translate', 'translation', '翻译', 'explain', 'mean', '什么意思',
+        'how do you say', '怎么说', 'in english', 'in chinese', '用英文', '用中文'
+    ]
+    wants_bilingual = any(kw in user_text.lower() for kw in bilingual_keywords)
+    
+    if mixed_input or wants_bilingual:
+        # Allow natural code-switching
+        prefixes = {
+            "zh": "[优先用中文回复，但可以适当切换语言]",
+            "es": "[Responde principalmente en español, pero puedes cambiar de idioma si es natural]",
+            "en": ""  # English is default, no prefix needed
+        }
+    else:
+        # Strict single-language response
+        prefixes = {
+            "zh": "[请只用简体中文回复。简洁自然，2-4句话。不要加拼音或翻译。]",
+            "es": "[Responde solo en español. Sé conciso y natural, 2-4 oraciones.]",
+            "en": ""  # English is default, no prefix needed
+        }
+    
+    return prefixes.get(language, "")
+
+
 class GeminiClient:
     """
     Gemini API client for generating conversational responses.
@@ -76,7 +121,8 @@ Avoid long explanations unless specifically asked."""
         self,
         prompt: str,
         max_tokens: int = 150,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        language: str = "en"
     ) -> str:
         """
         Generate a single response to a prompt.
@@ -85,6 +131,7 @@ Avoid long explanations unless specifically asked."""
             prompt: User input text
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature (0.0-1.0)
+            language: Target response language (en, zh, es)
             
         Returns:
             Generated response text
@@ -93,7 +140,11 @@ Avoid long explanations unless specifically asked."""
             self.initialize()
         
         try:
-            logger.info(f"Generating Gemini response for: '{prompt[:50]}...'")
+            # Add language instruction prefix
+            lang_prefix = get_language_prefix(language, prompt)
+            full_prompt = f"{lang_prefix} {prompt}".strip() if lang_prefix else prompt
+            
+            logger.info(f"Generating Gemini response for: '{prompt[:50]}...' (lang={language})")
             
             # Configure generation parameters
             generation_config = {
@@ -104,7 +155,7 @@ Avoid long explanations unless specifically asked."""
             
             # Generate response
             response = self.model.generate_content(
-                prompt,
+                full_prompt,
                 generation_config=generation_config
             )
             
@@ -123,7 +174,8 @@ Avoid long explanations unless specifically asked."""
         prompt: str,
         conversation_history: List[Dict[str, str]],
         max_tokens: int = 150,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        language: str = "en"
     ) -> str:
         """
         Generate response with conversation history context.
@@ -133,6 +185,7 @@ Avoid long explanations unless specifically asked."""
             conversation_history: List of {"role": "user"|"assistant", "content": str}
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature
+            language: Target response language (en, zh, es)
             
         Returns:
             Generated response text
@@ -141,7 +194,10 @@ Avoid long explanations unless specifically asked."""
             self.initialize()
         
         try:
-            logger.info(f"Generating Gemini response with history ({len(conversation_history)} turns)")
+            logger.info(f"Generating Gemini response with history ({len(conversation_history)} turns) (lang={language})")
+            
+            # Add language instruction prefix
+            lang_prefix = get_language_prefix(language, prompt)
             
             # Start or continue chat session
             if self.chat_session is None:
@@ -156,9 +212,9 @@ Avoid long explanations unless specifically asked."""
                     f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
                     for msg in recent_context
                 ])
-                full_prompt = f"Previous context:\n{context_text}\n\nUser: {prompt}"
+                full_prompt = f"{lang_prefix} Previous context:\n{context_text}\n\nUser: {prompt}".strip()
             else:
-                full_prompt = prompt
+                full_prompt = f"{lang_prefix} {prompt}".strip() if lang_prefix else prompt
             
             # Configure generation
             generation_config = {
